@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Approven - Customer Portal Login</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="/static/Approven Mobile App Icon.png">
+  <link rel="manifest" href="/customerportal/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-touch-fullscreen" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Approven">
+  <meta name="application-name" content="Approven">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --primary-light: #e0f2fe;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --radius: 12px;
+      --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    body {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: var(--slate-800);
+    }
+    .login-container {
+      width: 100%;
+      max-width: 460px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: var(--shadow-xl);
+      overflow: hidden;
+      animation: fadeIn 0.4s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .login-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      padding: 32px 28px;
+      text-align: center;
+      color: #ffffff;
+      position: relative;
+    }
+    .login-header::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #0284c7, #38bdf8, #0284c7);
+    }
+    .brand-logo {
+      max-height: 48px;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    }
+    .brand-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .brand-subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .login-body {
+      padding: 32px 28px;
+    }
+    .form-step {
+      display: none;
+    }
+    .form-step.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    .step-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--slate-900);
+      margin-bottom: 8px;
+    }
+    .step-desc {
+      font-size: 13px;
+      color: var(--slate-500);
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .input-group {
+      margin-bottom: 20px;
+    }
+    .input-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--slate-700);
+      margin-bottom: 8px;
+    }
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      color: var(--slate-500);
+      font-size: 15px;
+      pointer-events: none;
+    }
+    .form-input {
+      width: 100%;
+      height: 46px;
+      padding: 0 14px 0 42px;
+      background: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      border-radius: 8px;
+      font-size: 15px;
+      color: var(--slate-900);
+      transition: all 0.2s;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+    .otp-inputs {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .otp-digit {
+      width: 52px;
+      height: 56px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      background: var(--slate-50);
+      border: 2px solid var(--slate-200);
+      border-radius: 10px;
+      color: var(--slate-900);
+      font-family: Consolas, monospace;
+      transition: all 0.2s;
+    }
+    .otp-digit:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+    .btn-submit {
+      width: 100%;
+      height: 46px;
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-submit:hover:not(:disabled) {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+    }
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .alert-box {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    .alert-box.danger {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      display: flex;
+    }
+    .alert-box.success {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      display: flex;
+    }
+    .resend-box {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--slate-500);
+    }
+    .resend-link {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .resend-link:hover {
+      text-decoration: underline;
+    }
+    .resend-link.disabled {
+      color: var(--slate-500);
+      cursor: not-allowed;
+      text-decoration: none;
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--slate-500);
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 16px;
+      padding: 4px 0;
+    }
+    .back-btn:hover {
+      color: var(--slate-900);
+    }
+    .login-footer {
+      background: var(--slate-50);
+      padding: 16px 28px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--slate-500);
+      border-top: 1px solid var(--slate-200);
+    }
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="login-header">
+      <div class="brand-title">Approven</div>
+      <div class="brand-subtitle">Customer Portal &mdash; Certification Bodies</div>
+    </div>
+
+    <div class="login-body">
+      <!-- Status Alert -->
+      <div id="alertBox" class="alert-box">
+        <i id="alertIcon" class="fa-solid fa-circle-exclamation"></i>
+        <span id="alertMsg"></span>
+      </div>
+
+      <!-- STEP 1: Enter Email -->
+      <div id="stepEmail" class="form-step active">
+        <div class="step-title">Welcome Back</div>
+        <p class="step-desc">Enter your registered Certification Body billing email address. We will send you a secure One-Time Password (OTP) to sign in.</p>
+
+        <form id="emailForm" onsubmit="handleSendOTP(event)">
+          <div class="input-group">
+            <label class="input-label" for="userEmail">Billing Email Address</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-envelope input-icon"></i>
+              <input type="email" id="userEmail" class="form-input" placeholder="e.g. billing@controlunion.com" required autofocus autocomplete="email">
+            </div>
+          </div>
+
+          <button type="submit" id="sendOtpBtn" class="btn-submit">
+            <span>Send Login Code</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+      </div>
+
+      <!-- STEP 2: Enter OTP Code -->
+      <div id="stepOtp" class="form-step">
+        <button type="button" class="back-btn" onclick="goToStepEmail()">
+          <i class="fa-solid fa-arrow-left"></i> Change email
+        </button>
+
+        <div class="step-title">Enter Verification Code</div>
+        <p class="step-desc">We've sent a 6-digit code to <strong id="sentEmailDisplay" style="color:var(--slate-900);"></strong>. The code is valid for 15 minutes.</p>
+
+        <form id="otpForm" onsubmit="handleVerifyOTP(event)">
+          <div class="otp-inputs">
+            <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autofocus required>
+            <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+            <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+            <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+            <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+            <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+          </div>
+
+          <button type="submit" id="verifyOtpBtn" class="btn-submit">
+            <span>Sign In to Portal</span>
+            <i class="fa-solid fa-lock"></i>
+          </button>
+        </form>
+
+        <div class="resend-box">
+          Didn't receive the code? 
+          <a id="resendBtn" class="resend-link disabled" onclick="handleResendOTP()">Resend Code (<span id="resendCountdown">60</span>s)</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-footer">
+      &copy; Approven Partners LLP &bull; Secure Customer Portal
+    </div>
+  </div>
+
+  <script>
+    let currentEmail = '';
+    let countdownTimer = null;
+    let countdownSecs = 60;
+
+    function showAlert(msg, type = 'danger') {
+      const box = document.getElementById('alertBox');
+      const icon = document.getElementById('alertIcon');
+      const text = document.getElementById('alertMsg');
+      box.className = `alert-box ${type}`;
+      icon.className = type === 'danger' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+      text.textContent = msg;
+    }
+
+    function hideAlert() {
+      document.getElementById('alertBox').style.display = 'none';
+    }
+
+    function setBtnLoading(btn, isLoading, defaultText) {
+      if (isLoading) {
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner"></div> <span>Processing...</span>';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = defaultText;
+      }
+    }
+
+    async function handleSendOTP(e) {
+      e.preventDefault();
+      hideAlert();
+      const emailInput = document.getElementById('userEmail');
+      const email = emailInput.value.trim();
+      const btn = document.getElementById('sendOtpBtn');
+
+      if (!email) return;
+      currentEmail = email;
+
+      setBtnLoading(btn, true);
+
+      try {
+        const formData = new FormData();
+        formData.append('email', email);
+
+        const res = await fetch('/customerportal/api/request-otp', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          showAlert(data.message, 'success');
+          document.getElementById('sentEmailDisplay').textContent = email;
+          document.getElementById('stepEmail').classList.remove('active');
+          document.getElementById('stepOtp').classList.add('active');
+          initOtpInputs();
+          startResendCountdown();
+        } else {
+          showAlert(data.message || 'Failed to request login code. Please verify your email.');
+        }
+      } catch (err) {
+        showAlert('Network error or server unreachable. Please try again.');
+      } finally {
+        setBtnLoading(btn, false, '<span>Send Login Code</span> <i class="fa-solid fa-arrow-right"></i>');
+      }
+    }
+
+    function goToStepEmail() {
+      hideAlert();
+      clearInterval(countdownTimer);
+      document.getElementById('stepOtp').classList.remove('active');
+      document.getElementById('stepEmail').classList.add('active');
+      document.getElementById('userEmail').focus();
+    }
+
+    function initOtpInputs() {
+      const inputs = document.querySelectorAll('.otp-digit');
+      inputs.forEach((input, index) => {
+        input.value = '';
+        input.oninput = (e) => {
+          const val = e.target.value.replace(/[^0-9]/g, '');
+          input.value = val ? val[0] : '';
+          if (val && index < inputs.length - 1) {
+            inputs[index + 1].focus();
+          }
+          checkAutoSubmit();
+        };
+
+        input.onkeydown = (e) => {
+          if (e.key === 'Backspace' && !input.value && index > 0) {
+            inputs[index - 1].focus();
+          }
+        };
+
+        input.onpaste = (e) => {
+          e.preventDefault();
+          const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+          if (pasted) {
+            for (let i = 0; i < inputs.length; i++) {
+              if (i < pasted.length) {
+                inputs[i].value = pasted[i];
+              }
+            }
+            if (pasted.length >= inputs.length) {
+              inputs[inputs.length - 1].focus();
+            } else {
+              inputs[pasted.length].focus();
+            }
+            checkAutoSubmit();
+          }
+        };
+      });
+      setTimeout(() => inputs[0].focus(), 100);
+    }
+
+    function getOtpValue() {
+      const inputs = document.querySelectorAll('.otp-digit');
+      let otp = '';
+      inputs.forEach(i => otp += i.value);
+      return otp;
+    }
+
+    function checkAutoSubmit() {
+      const otp = getOtpValue();
+      if (otp.length === 6) {
+        document.getElementById('otpForm').dispatchEvent(new Event('submit', { cancelable: true }));
+      }
+    }
+
+    async function handleVerifyOTP(e) {
+      e.preventDefault();
+      hideAlert();
+      const otp = getOtpValue();
+      if (otp.length !== 6) {
+        showAlert('Please enter the full 6-digit code.');
+        return;
+      }
+
+      const btn = document.getElementById('verifyOtpBtn');
+      setBtnLoading(btn, true);
+
+      try {
+        const formData = new FormData();
+        formData.append('email', currentEmail);
+        formData.append('otp', otp);
+
+        const res = await fetch('/customerportal/api/verify-otp', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          showAlert('Signed in successfully! Redirecting...', 'success');
+          setTimeout(() => {
+            window.location.href = data.redirect || '/customerportal';
+          }, 500);
+        } else {
+          showAlert(data.message || 'Invalid or expired code. Please try again.');
+          document.querySelectorAll('.otp-digit').forEach(i => i.value = '');
+          document.querySelectorAll('.otp-digit')[0].focus();
+        }
+      } catch (err) {
+        showAlert('Network error. Please try again.');
+      } finally {
+        setBtnLoading(btn, false, '<span>Sign In to Portal</span> <i class="fa-solid fa-lock"></i>');
+      }
+    }
+
+    function startResendCountdown() {
+      clearInterval(countdownTimer);
+      countdownSecs = 60;
+      const resendBtn = document.getElementById('resendBtn');
+      const countSpan = document.getElementById('resendCountdown');
+      resendBtn.classList.add('disabled');
+      resendBtn.style.pointerEvents = 'none';
+
+      countdownTimer = setInterval(() => {
+        countdownSecs--;
+        countSpan.textContent = countdownSecs;
+        if (countdownSecs <= 0) {
+          clearInterval(countdownTimer);
+          resendBtn.classList.remove('disabled');
+          resendBtn.style.pointerEvents = 'auto';
+          resendBtn.innerHTML = 'Resend Code Now';
+        }
+      }, 1000);
+    }
+
+    async function handleResendOTP() {
+      if (countdownSecs > 0) return;
+      hideAlert();
+      const resendBtn = document.getElementById('resendBtn');
+      resendBtn.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:2px;border-top-color:var(--primary);"></div> Sending...';
+
+      try {
+        const formData = new FormData();
+        formData.append('email', currentEmail);
+
+        const res = await fetch('/customerportal/api/request-otp', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          showAlert('A new verification code has been sent.', 'success');
+          resendBtn.innerHTML = 'Resend Code (<span id="resendCountdown">60</span>s)';
+          startResendCountdown();
+        } else {
+          showAlert(data.message || 'Failed to resend code.');
+          resendBtn.innerHTML = 'Resend Code Now';
+        }
+      } catch (err) {
+        showAlert('Network error.');
+        resendBtn.innerHTML = 'Resend Code Now';
+      }
+    }
+  </script>
+</body>
+</html>

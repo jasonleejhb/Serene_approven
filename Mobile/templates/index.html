@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <script>
+    if (!sessionStorage.getItem('approven_authenticated')) {
+      window.location.replace('/m/logout');
+    }
+  </script>
+  <title>Approven Mobile - Audit Management</title>
+  
+  <!-- Mobile Web App & Shortcut Icons -->
+  <link rel="icon" type="image/png" href="/m/static/favicon.png?v={{ cache_buster }}">
+  <link rel="apple-touch-icon" href="/m/static/apple-touch-icon.png?v={{ cache_buster }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="/m/static/apple-touch-icon.png?v={{ cache_buster }}">
+  <link rel="manifest" href="/m/static/manifest.json?v={{ cache_buster }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Approven">
+  <meta name="theme-color" content="#001429">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <link rel="stylesheet" href="/m/static/mobile.css?v={{ cache_buster }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/m/static/xlsx.full.min.js?v={{ cache_buster }}"></script>
+</head>
+<body>
+  <div class="m-app-shell">
+    
+    <!-- Top Sticky Header -->
+    <header class="m-header">
+      <div class="m-header-left">
+        <img src="/m/static/Logo Login Screen Homepage.jpg?v={{ cache_buster }}" alt="Approven Logo" class="m-header-logo">
+        <div class="m-header-title-box">
+          <span class="m-header-title">Approven</span>
+          <span class="m-header-subtitle">Audit Management</span>
+        </div>
+      </div>
+
+      <div class="m-header-right">
+        <!-- Quick Sync Button -->
+        <button type="button" id="mBtnSync" class="m-btn-sync" title="Sync live data from Access">
+          <span class="sync-icon-spin" id="mSyncIcon">🔄</span>
+          <span id="mSyncLabel">Sync</span>
+        </button>
+
+        <!-- User Avatar / Profile Toggle -->
+        <button type="button" id="mBtnAvatar" class="m-user-avatar-btn" aria-label="User Profile">
+          {{ (user.display_name or user.username or 'U')[0].upper() }}
+        </button>
+      </div>
+    </header>
+
+    <!-- Profile Dropdown Drawer -->
+    <div id="mProfileDrawer" class="m-profile-drawer">
+      <div class="m-profile-info">
+        <div class="m-profile-name">{{ user.display_name or user.username }}</div>
+        <div class="m-profile-email">{{ user.email or user.username }}</div>
+        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+          Last Synced: <strong id="mLastSyncHeader">-</strong>
+        </div>
+      </div>
+      <a href="/m/logout" class="m-profile-logout" onclick="sessionStorage.removeItem('approven_authenticated');">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        <span>Logout</span>
+      </a>
+    </div>
+
+    <!-- Main Content Area with 5 Views -->
+    <main class="m-content">
+      
+      <!-- ====================================================================
+           VIEW 1: DASHBOARD
+           ==================================================================== -->
+      <section id="view-dashboard" class="m-view-section active">
+        <div class="m-section-header">
+          <h1 class="m-page-title">Dashboard</h1>
+          <p class="m-page-subtitle">Live analytics, audit statuses, and quoted amounts</p>
+        </div>
+
+        <!-- Date Range Filter Bar -->
+        <div class="m-date-filter-bar">
+          <div class="m-filter-pills" id="dashPills">
+            <button type="button" class="m-pill active" data-range="all">All Time</button>
+            <button type="button" class="m-pill" data-range="month">This Month</button>
+            <button type="button" class="m-pill" data-range="30d">Last 30 Days</button>
+            <button type="button" class="m-pill" data-range="year">This Year</button>
+            <button type="button" class="m-pill" data-range="custom">Custom</button>
+          </div>
+          <div class="m-custom-date-row" id="customDateRow" style="display: none;">
+            <input type="date" id="mDashFromDate" class="m-date-input">
+            <span style="font-size: 0.75rem; color: var(--text-muted);">to</span>
+            <input type="date" id="mDashToDate" class="m-date-input">
+            <button type="button" id="mBtnApplyDashFilter" class="m-btn-apply">Apply</button>
+          </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="m-metrics-grid">
+          <div class="m-metric-card highlight">
+            <span class="m-metric-label">Total Audits</span>
+            <span class="m-metric-val" id="statAuditsCount">-</span>
+            <span class="m-metric-sub">Workflows in system</span>
+          </div>
+          <div class="m-metric-card highlight">
+            <span class="m-metric-label">Quotes Total</span>
+            <span class="m-metric-val" id="statQuotesTotal">-</span>
+            <span class="m-metric-sub">Value quoted</span>
+          </div>
+          <div class="m-metric-card">
+            <span class="m-metric-label">Cert Bodies</span>
+            <span class="m-metric-val" id="statCbCount">-</span>
+            <span class="m-metric-sub">Registered</span>
+          </div>
+          <div class="m-metric-card">
+            <span class="m-metric-label">Auditors</span>
+            <span class="m-metric-val" id="statAuditorsCount">-</span>
+            <span class="m-metric-sub">Qualified list</span>
+          </div>
+        </div>
+
+        <!-- 6 Chart Cards -->
+        <!-- Tile 1 -->
+        <div class="m-chart-card">
+          <div class="m-chart-header">
+            <div>
+              <div class="m-chart-title">Audits per Cert Body</div>
+              <span class="m-chart-subtitle">Pending, Confirmed &amp; Complete</span>
+            </div>
+            <button type="button" class="m-btn-view-records" onclick="openDrilldownModal({}, 'Audits per Certification Body')">🔍 View</button>
+          </div>
+          <div class="m-chart-canvas-box">
+            <canvas id="mChartTile1"></canvas>
+          </div>
+        </div>
+
+        <!-- Tile 2 -->
+        <div class="m-chart-card">
+          <div class="m-chart-header">
+            <div>
+              <div class="m-chart-title">Audits by Status</div>
+              <span class="m-chart-subtitle">Pending vs Confirmed vs Complete</span>
+            </div>
+            <button type="button" class="m-btn-view-records" onclick="openDrilldownModal({}, 'Audits by Status')">🔍 View</button>
+          </div>
+          <div class="m-chart-canvas-box">
+            <canvas id="mChartTile2"></canvas>
+          </div>
+        </div>
+
+        <!-- Tile 3 -->
+        <div class="m-chart-card">
+          <div class="m-chart-header">
+            <div>
+              <div class="m-chart-title">Total Quote Values</div>
+              <span class="m-chart-subtitle">Preparing, Sent, Accepted</span>
+            </div>
+            <button type="button" class="m-btn-view-records" onclick="openDrilldownModal({}, 'Total Quote Values')">🔍 View</button>
+          </div>
+          <div class="m-chart-canvas-box">
+            <canvas id="mChartTile3"></canvas>
+          </div>
+        </div>
+
+        <!-- Tile 4 -->
+        <div class="m-chart-card">
+          <div class="m-chart-header">
+            <div>
+              <div class="m-chart-title">Quotes per Cert Body</div>
+              <span class="m-chart-subtitle">Accepted vs Declined</span>
+            </div>
+            <button type="button" class="m-btn-view-records" onclick="openDrilldownModal({quote_status: 'Accepted'}, 'Quotes per Certification Body')">🔍 View</button>
+          </div>
+          <div class="m-chart-canvas-box">
+            <canvas id="mChartTile4"></canvas>
+          </div>
+        </div>
+
+        <!-- Tile 5 -->
+        <div class="m-chart-card">
+          <div class="m-chart-header">
+            <div>
+              <div class="m-chart-title">Audits per Auditor</div>
+              <span class="m-chart-subtitle">Confirmed &amp; Complete audits</span>
+            </div>
+            <button type="button" class="m-btn-view-records" onclick="openDrilldownModal({}, 'Audits per Auditor')">🔍 View</button>
+          </div>
+          <div class="m-chart-canvas-box">
+            <canvas id="mChartTile5"></canvas>
+          </div>
+        </div>
+
+        <!-- Tile 6 -->
+        <div class="m-chart-card">
+          <div class="m-chart-header">
+            <div>
+              <div class="m-chart-title">Audits per Program</div>
+              <span class="m-chart-subtitle">Breakdown by status</span>
+            </div>
+            <button type="button" class="m-btn-view-records" onclick="openDrilldownModal({}, 'Audits per Audit Program')">🔍 View</button>
+          </div>
+          <div class="m-chart-canvas-box">
+            <canvas id="mChartTile6"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 2: AUDITS & QUOTES
+           ==================================================================== -->
+      <section id="view-audits" class="m-view-section">
+        <div class="m-section-header">
+          <h1 class="m-page-title">Audits &amp; Quotes</h1>
+          <p class="m-page-subtitle">Browse and filter audit workflows and quotes</p>
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <div class="m-search-toolbar">
+          <div class="m-search-input-wrap">
+            <svg class="m-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="mAuditSearch" class="m-search-input" placeholder="Search audits, CB, auditee, auditor...">
+            <button type="button" id="mAuditSearchClear" class="m-search-clear">&times;</button>
+          </div>
+
+          <div class="m-filter-chips-row" id="auditStatusChips">
+            <button type="button" class="m-chip active" data-status="active">
+              <span>Active</span>
+              <span class="m-chip-count" id="countAuditActive">0</span>
+            </button>
+            <button type="button" class="m-chip" data-status="all">
+              <span>All</span>
+              <span class="m-chip-count" id="countAuditAll">0</span>
+            </button>
+            <button type="button" class="m-chip" data-status="Pending">
+              <span>Pending</span>
+            </button>
+            <button type="button" class="m-chip" data-status="Confirmed">
+              <span>Confirmed</span>
+            </button>
+            <button type="button" class="m-chip" data-status="Complete">
+              <span>Complete</span>
+            </button>
+            <button type="button" class="m-chip" data-status="Cancelled">
+              <span>Cancelled</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="m-toolbar-extras">
+          <span class="m-count-badge" id="mAuditsCountLabel">Loading audits...</span>
+          <button type="button" id="mBtnExportAudits" class="m-btn-export">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            <span>Excel</span>
+          </button>
+        </div>
+
+        <!-- Audits Card List -->
+        <div id="mAuditsList" class="m-card-list">
+          <div class="m-empty-state">
+            <div class="mobile-spinner" style="border-top-color: var(--primary); width: 32px; height: 32px; margin: 0 auto 0.75rem;"></div>
+            <p>Loading audit workflows...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 3: CERTIFICATION BODIES
+           ==================================================================== -->
+      <section id="view-cbs" class="m-view-section">
+        <div class="m-section-header">
+          <h1 class="m-page-title">Certification Bodies</h1>
+          <p class="m-page-subtitle">Directory of certification bodies and contacts</p>
+        </div>
+
+        <div class="m-search-toolbar">
+          <div class="m-search-input-wrap">
+            <svg class="m-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="mCbSearch" class="m-search-input" placeholder="Search company, code, address...">
+            <button type="button" id="mCbSearchClear" class="m-search-clear">&times;</button>
+          </div>
+
+          <div class="m-filter-chips-row" id="cbStatusChips">
+            <button type="button" class="m-chip active" data-status="Active"><span>Active Only</span></button>
+            <button type="button" class="m-chip" data-status="all"><span>Show All</span></button>
+            <button type="button" class="m-chip" data-status="Inactive"><span>Inactive</span></button>
+          </div>
+        </div>
+
+        <div class="m-toolbar-extras">
+          <span class="m-count-badge" id="mCbCountLabel">Loading CBs...</span>
+        </div>
+
+        <!-- CB Card List -->
+        <div id="mCbList" class="m-card-list">
+          <div class="m-empty-state">
+            <div class="mobile-spinner" style="border-top-color: var(--primary); width: 32px; height: 32px; margin: 0 auto 0.75rem;"></div>
+            <p>Loading certification bodies...</p>
+          </div>
+        </div>
+
+        <!-- Floating Add Button for CB -->
+        <button type="button" class="m-fab" id="mBtnAddCb" title="Add Certification Body" aria-label="Add Certification Body">+</button>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 4: AUDITORS
+           ==================================================================== -->
+      <section id="view-auditors" class="m-view-section">
+        <div class="m-section-header">
+          <h1 class="m-page-title">Auditors</h1>
+          <p class="m-page-subtitle">Directory of qualified auditors and accreditations</p>
+        </div>
+
+        <div class="m-search-toolbar">
+          <div class="m-search-input-wrap">
+            <svg class="m-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="mAuditorSearch" class="m-search-input" placeholder="Search auditor, email, city, APSCA...">
+            <button type="button" id="mAuditorSearchClear" class="m-search-clear">&times;</button>
+          </div>
+
+          <div class="m-filter-chips-row" id="auditorStatusChips">
+            <button type="button" class="m-chip active" data-status="Active"><span>Active Only</span></button>
+            <button type="button" class="m-chip" data-status="all"><span>Show All</span></button>
+            <button type="button" class="m-chip" data-status="Inactive"><span>Inactive</span></button>
+          </div>
+        </div>
+
+        <div class="m-toolbar-extras">
+          <span class="m-count-badge" id="mAuditorCountLabel">Loading auditors...</span>
+        </div>
+
+        <!-- Auditor Card List -->
+        <div id="mAuditorList" class="m-card-list">
+          <div class="m-empty-state">
+            <div class="mobile-spinner" style="border-top-color: var(--primary); width: 32px; height: 32px; margin: 0 auto 0.75rem;"></div>
+            <p>Loading auditors directory...</p>
+          </div>
+        </div>
+
+        <!-- Floating Add Button for Auditor -->
+        <button type="button" class="m-fab" id="mBtnAddAuditor" title="Add Auditor" aria-label="Add Auditor">+</button>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 5: MORE / ADMIN / AUDITEES / REPORTING
+           ==================================================================== -->
+      <section id="view-more" class="m-view-section">
+        <div class="m-section-header">
+          <h1 class="m-page-title">More &amp; System</h1>
+          <p class="m-page-subtitle">Administration, system sync, and organization modules</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          
+          <!-- Sync & Data Refresh Card -->
+          <div class="m-chart-card">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+              <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background: #eff6ff; color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">🔄</div>
+              <div>
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-dark);">Database Synchronization</h3>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Sync live data from MS Access to SQL Server</span>
+              </div>
+            </div>
+            <div style="background: var(--bg-body); padding: 0.75rem; border-radius: var(--radius-md); font-size: 0.8rem; margin-bottom: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                <span style="color: var(--text-muted);">Last Sync Status:</span>
+                <strong id="mMoreSyncStatus" style="color: var(--success);">Up to date</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-muted);">Last Sync Time:</span>
+                <strong id="mMoreSyncTime">-</strong>
+              </div>
+            </div>
+            <button type="button" id="mBtnTriggerSync" class="mobile-btn-primary" style="height: 42px; margin-top: 0; font-size: 0.9rem;" title="Sync live data from Access">
+              <span id="mBtnSyncText">Sync Now</span>
+              <span id="mBtnSyncSpinner" class="mobile-spinner" style="display: none;"></span>
+            </button>
+          </div>
+
+          <!-- Auditees Module -->
+          <div class="m-chart-card">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+              <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background: #fdf2f8; color: #db2777; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">👥</div>
+              <div>
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-dark);">Auditees &amp; Sites</h3>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Client company accounts and physical audit sites</span>
+              </div>
+            </div>
+            <div class="m-metric-card" style="margin-top: 0.5rem;">
+              <span class="m-metric-label">Registered Auditees</span>
+              <span class="m-metric-val" id="statMoreAuditees">-</span>
+            </div>
+          </div>
+
+          <!-- Reporting Engine -->
+          <div class="m-chart-card">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+              <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background: #f0fdf4; color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">📈</div>
+              <div>
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-dark);">Reporting &amp; Mandays</h3>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Manday calculation defaults and financial logs</span>
+              </div>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+              Reports and exports are generated directly from the Audits and Dashboard modules with 1-tap Excel export.
+            </p>
+          </div>
+
+          <!-- Administration Card -->
+          <div class="m-chart-card">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+              <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background: #faf5ff; color: var(--purple); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">🛡️</div>
+              <div>
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--primary-dark);">Administration</h3>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Security and user accounts</span>
+              </div>
+            </div>
+            <div class="m-metric-card" style="margin-top: 0.5rem;">
+              <span class="m-metric-label">Active System Users</span>
+              <span class="m-metric-val" id="statMoreUsers">-</span>
+            </div>
+          </div>
+
+          <!-- User Account & Logout -->
+          <div class="m-chart-card" style="border-color: #fee2e2;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 700; color: var(--text-main);">Signed in as {{ user.username }}</div>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Approven Live Server</span>
+              </div>
+              <a href="/m/logout" class="m-btn-contact email" style="background: var(--danger-light); color: var(--danger-text); border-color: #fca5a5; padding: 0.4rem 0.85rem;" onclick="sessionStorage.removeItem('approven_authenticated');">
+                Sign Out
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Touch Navigation Bar -->
+    <nav class="m-bottom-nav">
+      <div class="m-nav-item active" data-target="view-dashboard">
+        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        <span>Dashboard</span>
+      </div>
+      <div class="m-nav-item" data-target="view-audits">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        <span>Audits</span>
+      </div>
+      <div class="m-nav-item" data-target="view-cbs">
+        <svg viewBox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+        <span>CBs</span>
+      </div>
+      <div class="m-nav-item" data-target="view-auditors">
+        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        <span>Auditors</span>
+      </div>
+      <div class="m-nav-item" data-target="view-more">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>More</span>
+      </div>
+    </nav>
+
+  </div>
+
+  <!-- ========================================================================
+       MODALS & BOTTOM SHEETS
+       ======================================================================== -->
+
+  <!-- 1. Audit Detail Bottom Sheet -->
+  <div id="mAuditDetailSheet" class="m-sheet-overlay">
+    <div class="m-bottom-sheet">
+      <div class="m-sheet-handle-bar"><div class="m-sheet-handle"></div></div>
+      <div class="m-sheet-header">
+        <div>
+          <span class="m-wfid-pill" id="mDetailWfid">WFID #-</span>
+          <span id="mDetailStatus" class="m-status-badge status-confirmed" style="margin-left: 0.35rem;">-</span>
+        </div>
+        <button type="button" class="m-btn-sheet-close" id="mBtnCloseAuditDetail">&times;</button>
+      </div>
+      <div class="m-sheet-body" id="mAuditDetailContent">
+        <!-- Content injected dynamically -->
+      </div>
+      <div class="m-sheet-footer">
+        <button type="button" class="mobile-btn-primary" style="margin-top: 0; width: 100%; height: 42px;" id="mBtnCloseAuditDetailFooter">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Chart Drilldown Bottom Sheet -->
+  <div id="mDrilldownSheet" class="m-sheet-overlay">
+    <div class="m-bottom-sheet">
+      <div class="m-sheet-handle-bar"><div class="m-sheet-handle"></div></div>
+      <div class="m-sheet-header">
+        <div>
+          <div class="m-sheet-title" id="mDrilldownTitle">Audit Records</div>
+          <span id="mDrilldownSubtitle" style="font-size: 0.72rem; color: var(--text-muted);"></span>
+        </div>
+        <button type="button" class="m-btn-sheet-close" id="mBtnCloseDrilldown">&times;</button>
+      </div>
+      <div style="padding: 0.75rem 1.25rem 0.25rem;">
+        <div class="m-search-input-wrap">
+          <svg class="m-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="mDrilldownSearch" class="m-search-input" placeholder="Search records in pop-up...">
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+          <span class="m-count-badge" id="mDrilldownCount">Showing 0 records</span>
+          <button type="button" id="mBtnExportDrilldown" class="m-btn-export">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            <span>Excel</span>
+          </button>
+        </div>
+      </div>
+      <div class="m-sheet-body" id="mDrilldownList" style="padding-top: 0.5rem;">
+        <!-- Filtered cards injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Certification Body Add/Edit Bottom Sheet -->
+  <div id="mCbModalSheet" class="m-sheet-overlay">
+    <div class="m-bottom-sheet" style="max-height: 94vh;">
+      <div class="m-sheet-handle-bar"><div class="m-sheet-handle"></div></div>
+      <div class="m-sheet-header">
+        <h3 class="m-sheet-title" id="mCbModalTitle">Edit Certification Body</h3>
+        <button type="button" class="m-btn-sheet-close" id="mBtnCloseCbModal">&times;</button>
+      </div>
+
+      <div class="m-modal-tabs" style="margin: 0.75rem 1.25rem 0;">
+        <button type="button" class="m-modal-tab-btn active" data-tab="mTabCbGeneral">General</button>
+        <button type="button" class="m-modal-tab-btn" data-tab="mTabCbRates">Rates &amp; Terms</button>
+        <button type="button" class="m-modal-tab-btn" data-tab="mTabCbContacts">Contacts (<span id="mCbContactCount">0</span>)</button>
+      </div>
+
+      <div class="m-sheet-body">
+        <form id="mCbForm">
+          <input type="hidden" id="m_cb_id" name="ID">
+
+          <!-- Tab 1: General -->
+          <div id="mTabCbGeneral" class="m-tab-pane active">
+            <div class="m-form-group">
+              <label class="m-form-label" for="m_cb_Company_Name">Company Name *</label>
+              <input type="text" id="m_cb_Company_Name" name="Company_Name" class="m-form-input" required>
+            </div>
+            <div class="m-form-grid-2">
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_cb_Customer_Number">Cust #</label>
+                <input type="text" id="m_cb_Customer_Number" name="Customer_Number" class="m-form-input">
+              </div>
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_cb_Code">Code</label>
+                <input type="text" id="m_cb_Code" name="Code" class="m-form-input">
+              </div>
+            </div>
+            <div class="m-form-grid-2">
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_cb_Status">Status</label>
+                <select id="m_cb_Status" name="Status" class="m-form-select">
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_cb_Billing_Country">Country</label>
+                <select id="m_cb_Billing_Country" name="Billing_Country" class="m-form-select">
+                  <option value="">-- Country --</option>
+                  {% for c in countries %}
+                  <option value="{{ c }}">{{ c }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="m-form-group">
+              <label class="m-form-label" for="m_cb_Billing_Physical_Address">Physical Address</label>
+              <input type="text" id="m_cb_Billing_Physical_Address" name="Billing_Physical_Address" class="m-form-input">
+            </div>
+            <div class="m-form-group">
+              <label class="m-form-label" for="m_cb_Billing_Contact_Name">Billing Contact</label>
+              <input type="text" id="m_cb_Billing_Contact_Name" name="Billing_Contact_Name" class="m-form-input">
+            </div>
+            <div class="m-form-grid-2">
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_cb_Billing_Email">Billing Email</label>
+                <input type="email" id="m_cb_Billing_Email" name="Billing_Email" class="m-form-input">
+              </div>
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_cb_Billing_Tel">Billing Tel</label>
+                <input type="text" id="m_cb_Billing_Tel" name="Billing_Tel" class="m-form-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Rates & Terms -->
+          <div id="mTabCbRates" class="m-tab-pane" style="display: none;">
+            <div class="m-form-grid-2">
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_cb_Man_Day_Rate">Man-Day Rate (€)</label>
+                <input type="number" step="0.01" id="m_cb_Man_Day_Rate" name="Man_Day_Rate" class="m-form-input" placeholder="0.00">
+              </div>
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_cb_Report_Fee">Report Fee (€)</label>
+                <input type="number" step="0.01" id="m_cb_Report_Fee" name="Report_Fee" class="m-form-input" placeholder="0.00">
+              </div>
+            </div>
+            <div class="m-form-grid-2">
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_cb_Per_KM_Rate">Per KM Rate (€)</label>
+                <input type="number" step="0.01" id="m_cb_Per_KM_Rate" name="Per_KM_Rate" class="m-form-input" placeholder="0.00">
+              </div>
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_cb_Travel_Time_Rate_perHour">Travel (/hr €)</label>
+                <input type="number" step="0.01" id="m_cb_Travel_Time_Rate_perHour" name="Travel_Time_Rate_perHour" class="m-form-input" placeholder="0.00">
+              </div>
+            </div>
+            <div class="m-form-group">
+              <label class="m-form-label" for="m_cb_Hotel_perNight_Rate">Hotel / Night Rate (€)</label>
+              <input type="number" step="0.01" id="m_cb_Hotel_perNight_Rate" name="Hotel_perNight_Rate" class="m-form-input" placeholder="0.00">
+            </div>
+            <div class="m-form-group">
+              <label class="m-form-label" for="m_cb_Quote_Terms">Quote Terms</label>
+              <textarea id="m_cb_Quote_Terms" name="Quote_Terms" class="m-form-textarea"></textarea>
+            </div>
+            <div class="m-form-group">
+              <label class="m-form-label" for="m_cb_Comments">Comments</label>
+              <textarea id="m_cb_Comments" name="Comments" class="m-form-textarea"></textarea>
+            </div>
+          </div>
+
+          <!-- Tab 3: Contacts -->
+          <div id="mTabCbContacts" class="m-tab-pane" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">Linked Contacts</span>
+              <button type="button" id="mBtnAddContactRow" class="m-btn-view-records">+ Add Contact</button>
+            </div>
+            <div id="mCbContactsContainer" style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <!-- Contact cards injected dynamically -->
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="m-sheet-footer">
+        <button type="button" class="m-btn-sheet-close" id="mBtnCancelCbModal" style="flex: 1; height: 42px; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 600;">Cancel</button>
+        <button type="button" id="mBtnSaveCb" class="mobile-btn-primary" style="flex: 2; height: 42px; margin-top: 0;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Auditor Add/Edit Bottom Sheet -->
+  <div id="mAuditorModalSheet" class="m-sheet-overlay">
+    <div class="m-bottom-sheet" style="max-height: 94vh;">
+      <div class="m-sheet-handle-bar"><div class="m-sheet-handle"></div></div>
+      <div class="m-sheet-header">
+        <h3 class="m-sheet-title" id="mAuditorModalTitle">Edit Auditor</h3>
+        <button type="button" class="m-btn-sheet-close" id="mBtnCloseAuditorModal">&times;</button>
+      </div>
+
+      <div class="m-modal-tabs" style="margin: 0.75rem 1.25rem 0;">
+        <button type="button" class="m-modal-tab-btn active" data-tab="mTabAuditorPersonal">Personal</button>
+        <button type="button" class="m-modal-tab-btn" data-tab="mTabAuditorCbs">CBs Onboarded</button>
+        <button type="button" class="m-modal-tab-btn" data-tab="mTabAuditorPrograms">Programs</button>
+      </div>
+
+      <div class="m-sheet-body">
+        <form id="mAuditorForm">
+          <input type="hidden" id="m_auditor_id" name="AuditorID">
+
+          <!-- Tab 1: Personal -->
+          <div id="mTabAuditorPersonal" class="m-tab-pane active">
+            <div class="m-form-grid-2">
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_aud_First_Name">First Name *</label>
+                <input type="text" id="m_aud_First_Name" name="First_Name" class="m-form-input" required>
+              </div>
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_aud_Last_Name">Last Name *</label>
+                <input type="text" id="m_aud_Last_Name" name="Last_Name" class="m-form-input" required>
+              </div>
+            </div>
+            <div class="m-form-grid-2">
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_aud_Status">Status</label>
+                <select id="m_aud_Status" name="Status" class="m-form-select">
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_aud_Gender">Gender</label>
+                <select id="m_aud_Gender" name="Gender" class="m-form-select">
+                  <option value="">-- Select --</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="m-form-grid-2">
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_aud_Email">Email</label>
+                <input type="email" id="m_aud_Email" name="Email" class="m-form-input">
+              </div>
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_aud_Mobile_Nr">Mobile Nr</label>
+                <input type="text" id="m_aud_Mobile_Nr" name="Mobile_Nr" class="m-form-input">
+              </div>
+            </div>
+            <div class="m-form-grid-2">
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_aud_APSCA_Nr">APSCA Nr</label>
+                <input type="text" id="m_aud_APSCA_Nr" name="APSCA_Nr" class="m-form-input">
+              </div>
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_aud_Employment_Type">Employment</label>
+                <select id="m_aud_Employment_Type" name="Employment_Type" class="m-form-select">
+                  <option value="">-- Select --</option>
+                  <option value="Employee">Employee</option>
+                  <option value="Contractor">Contractor</option>
+                  <option value="Sub-contractor">Sub-contractor</option>
+                </select>
+              </div>
+            </div>
+            <div class="m-form-grid-2">
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_aud_Residence_City">City / Area</label>
+                <input type="text" id="m_aud_Residence_City" name="Residence_City" class="m-form-input">
+              </div>
+              <div class="m-form-group">
+                <label class="m-form-label" for="m_aud_Residence_Country">Country</label>
+                <select id="m_aud_Residence_Country" name="Residence_Country" class="m-form-select">
+                  <option value="">-- Select --</option>
+                  {% for c in countries %}
+                  <option value="{{ c }}">{{ c }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="m-form-group" style="margin-top: 0.5rem;">
+              <label class="m-checkbox-label">
+                <input type="checkbox" id="m_aud_Lead_Auditor" name="Lead_Auditor">
+                <span>Qualified Lead Auditor ⭐</span>
+              </label>
+            </div>
+            <div class="m-form-group">
+              <label class="m-checkbox-label">
+                <input type="checkbox" id="m_aud_Internal_Onboarding_Complete" name="Internal_Onboarding_Complete">
+                <span>Internal Onboarding Complete</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Tab 2: CBs Onboarded -->
+          <div id="mTabAuditorCbs" class="m-tab-pane" style="display: none;">
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+              Select all Certification Bodies this auditor is onboarded with:
+            </div>
+            <div id="mAuditorCbCheckboxList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <!-- CB checkboxes injected dynamically -->
+            </div>
+          </div>
+
+          <!-- Tab 3: Programs -->
+          <div id="mTabAuditorPrograms" class="m-tab-pane" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <span style="font-size: 0.82rem; font-weight: 700;">Auditor Program Qualifications</span>
+              <button type="button" id="mBtnSeedPrograms" class="m-btn-view-records">⚡ Seed All</button>
+            </div>
+            <div id="mAuditorProgramsContainer" style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <!-- Program cards injected dynamically -->
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="m-sheet-footer">
+        <button type="button" class="m-btn-sheet-close" id="mBtnCancelAuditorModal" style="flex: 1; height: 42px; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 600;">Cancel</button>
+        <button type="button" id="mBtnSaveAuditor" class="mobile-btn-primary" style="flex: 2; height: 42px; margin-top: 0;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="mToast" class="m-toast">Action completed</div>
+
+  <!-- Mobile JavaScript Application Logic -->
+  <script src="/m/static/mobile.js?v={{ cache_buster }}"></script>
+</body>
+</html>

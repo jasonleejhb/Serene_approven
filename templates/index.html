@@ -1,0 +1,3373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <script>
+    // Enforce re-login when web page / browser is closed and reopened
+    if (!sessionStorage.getItem('approven_authenticated')) {
+      window.location.replace('/logout');
+    }
+    // Clear browser CacheStorage / ServiceWorkers on web app open
+    if (window.caches) {
+      caches.keys().then(function(names) {
+        for (let name of names) {
+          caches.delete(name);
+        }
+      }).catch(function() {});
+    }
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let reg of registrations) {
+          reg.unregister();
+        }
+      }).catch(function() {});
+    }
+  </script>
+  <title>Approven - Audit Management System</title>
+  <!-- Mobile Web App & Shortcut Icons -->
+  <link rel="icon" type="image/png" href="/static/favicon.png?v={{ cache_buster }}">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v={{ cache_buster }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png?v={{ cache_buster }}">
+  <link rel="manifest" href="/static/manifest.json?v={{ cache_buster }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Approven">
+  <meta name="theme-color" content="#001429">
+  <link rel="stylesheet" href="/static/styles.css?v={{ cache_buster }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/static/xlsx.full.min.js?v={{ cache_buster }}"></script>
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="header-brand">
+          <img src="/static/Logo Login Screen Homepage.jpg?v={{ cache_buster }}" alt="Approven Logo" class="header-logo-img">
+          <span class="header-brand-subtitle">Serenity 2.0</span>
+        </div>
+        <button type="button" id="btnMobileMenuOpen" class="btn-mobile-menu-open" title="Show Menu" aria-label="Open Navigation Menu">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="13 17 18 12 13 7"></polyline>
+            <polyline points="6 17 11 12 6 7"></polyline>
+          </svg>
+        </button>
+        <div class="header-titles">
+          <span class="sub-header-title">Serenity - Operations Management System</span>
+        </div>
+      </div>
+      
+      <div class="header-right" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <div class="sync-container">
+          <button type="button" id="btnSyncData" class="btn-sync" title="Synchronize live data from Access to SQL Server">
+            <span id="syncIcon">🔄</span>
+            <span id="syncBtnText">Sync Data</span>
+          </button>
+          <div class="sync-time-box">
+            <span class="sync-time-heading" style="color: #ffffff; opacity: 0.9;">LAST SYNCED</span>
+            <span id="syncLastTimeLabel" class="sync-time-val" style="color: #ffffff;">Loading...</span>
+          </div>
+        </div>
+
+        <div class="user-badge">
+          <span>Logged in as:</span>
+          <strong>{{ user.username }}</strong>
+        </div>
+        <a href="/logout" class="btn-logout" onclick="sessionStorage.removeItem('approven_authenticated');">Logout</a>
+      </div>
+    </header>
+
+    <!-- Main Body: Navigation Sidebar + Content Area -->
+    <div class="app-body">
+      
+      <!-- Left Navigation Sidebar -->
+      <nav class="sidebar" id="appSidebar">
+        <div class="sidebar-toggle-row">
+          <button type="button" id="btnToggleSidebar" class="btn-sidebar-toggle" title="Hide Menu" aria-label="Toggle Sidebar Navigation">
+            <svg id="sidebarToggleIconHide" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="11 17 6 12 11 7"></polyline>
+              <polyline points="18 17 13 12 18 7"></polyline>
+            </svg>
+            <svg id="sidebarToggleIconShow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+              <polyline points="13 17 18 12 13 7"></polyline>
+              <polyline points="6 17 11 12 6 7"></polyline>
+            </svg>
+          </button>
+        </div>
+        <ul class="nav-menu">
+          <li>
+            <a href="#" class="nav-item active" data-view="dashboard">
+              <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-item" data-view="audits-quotes">
+              <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+              <span>Audits &amp; Quotes</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-item" data-view="certification-bodies">
+              <svg viewBox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+              <span>Certification Bodies</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-item" data-view="auditees">
+              <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+              <span>Auditees</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-item" data-view="auditors">
+              <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+              <span>Auditors</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-item" data-view="reporting">
+              <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+              <span>Reporting</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-item" data-view="administration">
+              <svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+              <span>Administration</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      <!-- Mobile Sidebar Backdrop -->
+      <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+      <!-- Main Content Container -->
+      <main class="content-area">
+        
+        <!-- View 0: Dashboard -->
+        <section id="view-dashboard" class="view-section active">
+          <div class="page-header" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 class="page-title">Dashboard</h2>
+              <p class="page-subtitle">Summary of audit workflows, status counts, quote values, and audit programs.</p>
+            </div>
+
+            <!-- Dashboard Date Range Filter Controls -->
+            <div class="dashboard-date-filters" style="display: flex; align-items: center; gap: 0.5rem; background: #ffffff; padding: 0.4rem 0.85rem; border-radius: 8px; border: 1px solid var(--border-light); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div style="display: flex; align-items: center; gap: 0.35rem;">
+                <label for="dashFromDate" style="font-size: 0.82rem; font-weight: 600; color: #475569; white-space: nowrap;">From:</label>
+                <input type="date" id="dashFromDate" class="date-input" style="padding: 0.3rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.82rem; background: #ffffff; color: #0f172a; height: 32px;">
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.35rem;">
+                <label for="dashToDate" style="font-size: 0.82rem; font-weight: 600; color: #475569; white-space: nowrap;">To:</label>
+                <input type="date" id="dashToDate" class="date-input" style="padding: 0.3rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.82rem; background: #ffffff; color: #0f172a; height: 32px;">
+              </div>
+              <button type="button" id="btnFilterDashboard" class="btn-primary" style="padding: 0.35rem 0.95rem; font-size: 0.82rem; font-weight: 700; height: 32px; line-height: 1;">Apply</button>
+            </div>
+          </div>
+
+          <!-- 2x3 Grid for 6 Chart Tiles -->
+          <div class="dashboard-grid-2x3">
+            
+            <!-- Tile 1: Audits per Certification Body -->
+            <div class="chart-card">
+              <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <h3 class="chart-title">Audits per Certification Body</h3>
+                  <span class="chart-subtitle">Pending, Confirmed &amp; Complete (with Quoted Value)</span>
+                </div>
+                <button type="button" class="btn-primary" onclick="openDrilldownModal({}, 'Audits per Certification Body')" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; cursor: pointer; white-space: nowrap;">🔍 View Data</button>
+              </div>
+              <div class="chart-body">
+                <canvas id="chartTile1" style="width: 100%; height: 100%; min-height: 280px;"></canvas>
+              </div>
+            </div>
+
+            <!-- Tile 2: Audits by Status -->
+            <div class="chart-card">
+              <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <h3 class="chart-title">Audits by Status</h3>
+                </div>
+                <button type="button" class="btn-primary" onclick="openDrilldownModal({}, 'Audits by Status')" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; cursor: pointer; white-space: nowrap;">🔍 View Data</button>
+              </div>
+              <div class="chart-body">
+                <canvas id="chartTile2" style="width: 100%; height: 100%; min-height: 280px;"></canvas>
+              </div>
+            </div>
+
+            <!-- Tile 3: Total Quote Values -->
+            <div class="chart-card">
+              <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <h3 class="chart-title">Total Quote Values</h3>
+                </div>
+                <button type="button" class="btn-primary" onclick="openDrilldownModal({}, 'Total Quote Values')" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; cursor: pointer; white-space: nowrap;">🔍 View Data</button>
+              </div>
+              <div class="chart-body">
+                <canvas id="chartTile3" style="width: 100%; height: 100%; min-height: 280px;"></canvas>
+              </div>
+            </div>
+
+            <!-- Tile 4: Quotes per Certification Body (Accepted vs Declined) -->
+            <div class="chart-card">
+              <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <h3 class="chart-title">Quotes per Certification Body</h3>
+                  <span class="chart-subtitle">Accepted &amp; Declined Quotes</span>
+                </div>
+                <button type="button" class="btn-primary" onclick="openDrilldownModal({quote_status: 'Accepted'}, 'Quotes per Certification Body')" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; cursor: pointer; white-space: nowrap;">🔍 View Data</button>
+              </div>
+              <div class="chart-body">
+                <canvas id="chartTile4" style="width: 100%; height: 100%; min-height: 280px;"></canvas>
+              </div>
+            </div>
+
+            <!-- Tile 5: Audits per Auditor (Confirmed vs Complete) -->
+            <div class="chart-card">
+              <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <h3 class="chart-title">Audits per Auditor</h3>
+                  <span class="chart-subtitle">Confirmed &amp; Complete Audits</span>
+                </div>
+                <button type="button" class="btn-primary" onclick="openDrilldownModal({}, 'Audits per Auditor')" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; cursor: pointer; white-space: nowrap;">🔍 View Data</button>
+              </div>
+              <div class="chart-body">
+                <canvas id="chartTile5" style="width: 100%; height: 100%; min-height: 280px;"></canvas>
+              </div>
+            </div>
+
+            <!-- Tile 6: Audits per Audit Program -->
+            <div class="chart-card">
+              <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <h3 class="chart-title">Audits per Audit Program</h3>
+                  <span class="chart-subtitle">Program Breakdown by Status (Pending, Confirmed, Complete)</span>
+                </div>
+                <button type="button" class="btn-primary" onclick="openDrilldownModal({}, 'Audits per Audit Program')" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; cursor: pointer; white-space: nowrap;">🔍 View Data</button>
+              </div>
+              <div class="chart-body">
+                <canvas id="chartTile6" style="width: 100%; height: 100%; min-height: 280px;"></canvas>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- View 1: Audits & Quotes -->
+        <section id="view-audits-quotes" class="view-section">
+          <div class="page-header" style="margin-bottom: 1.25rem;">
+            <div>
+              <h2 class="page-title">Audits &amp; Quotes</h2>
+              <p class="page-subtitle">Directory of audit workflows, quotes, schedule dates, and invoiced status.</p>
+            </div>
+          </div>
+
+          <!-- Module Toolbar: Search, Show All Filter, Counter, Export to XLSX -->
+          <div class="module-toolbar" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div class="search-box" style="max-width: 380px; flex: 1; min-width: 250px;">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="auditSearchInput" class="search-input" placeholder="Search by WFID, Project Nr, CB, Auditee, Program, Auditor...">
+            </div>
+            
+            <div class="toolbar-actions" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              <label class="toggle-label" title="Unchecked = Show only Pending & Confirmed audits. Checked = Show All audits including Complete and Cancelled." style="cursor: pointer; display: flex; align-items: center; gap: 0.45rem; font-weight: 600; font-size: 0.85rem; color: #334155;">
+                <input type="checkbox" id="auditShowAllToggle">
+                <span>Show All (Include Complete &amp; Cancelled)</span>
+              </label>
+
+              <div id="auditsBadgeCounter" class="drilldown-badge" style="font-size: 0.82rem; padding: 0.35rem 0.75rem; background: #e2e8f0; color: #1e293b; border-radius: 6px; font-weight: 600;">
+                Showing 0 audits
+              </div>
+
+              <button type="button" id="btnExportAuditsXLSX" class="btn-primary" style="background-color: #10b981; border-color: #10b981; color: #ffffff; padding: 0.45rem 1rem; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 6px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" title="Export audits list to Microsoft Excel (.xlsx)">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                <span>Export to XLSX</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Data Table for Audits List -->
+          <div class="data-table-container" style="max-height: calc(100vh - 220px); overflow: auto;">
+            <table class="data-table" id="auditsListTable">
+              <thead>
+                <tr>
+                  <th class="sortable-th-audit" data-sort-key="WFID" style="cursor: pointer; white-space: nowrap;">WFID <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Workflow_Status" style="cursor: pointer; white-space: nowrap;">Audit Status <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Quote_Status" style="cursor: pointer; white-space: nowrap;">Quote Status <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="CB_Name" style="cursor: pointer; white-space: nowrap;">Certification Body <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Auditee_Name" style="cursor: pointer; white-space: nowrap;">Auditee <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Site_Location" style="cursor: pointer; white-space: nowrap;">Site / Country <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Audit_Program" style="cursor: pointer; white-space: nowrap;">Program <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Audit_Type" style="cursor: pointer; white-space: nowrap;">Type <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Announcement" style="cursor: pointer; white-space: nowrap;">Announcement <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Audit_Start" style="cursor: pointer; white-space: nowrap;">Start Date <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Audit_End" style="cursor: pointer; white-space: nowrap;">End Date <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Auditor_Names" style="cursor: pointer; white-space: nowrap;">Auditors <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Total_Mandays" style="cursor: pointer; white-space: nowrap;">Mandays <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Quote_SubTotal" style="cursor: pointer; text-align: right; white-space: nowrap;">Quote Total (€) <span class="sort-icon">↕</span></th>
+                  <th class="sortable-th-audit" data-sort-key="Invoiced" style="cursor: pointer; white-space: nowrap;">Invoiced <span class="sort-icon">↕</span></th>
+                </tr>
+              </thead>
+              <tbody id="auditsListTableBody">
+                <tr>
+                  <td colspan="15" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Loading audit workflows...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- View 2: Certification Bodies -->
+        <section id="view-certification-bodies" class="view-section">
+          <div class="page-header">
+            <h2 class="page-title">Certification Bodies</h2>
+            <p class="page-subtitle">Manage certification body directories, rates, and linked contacts.</p>
+          </div>
+
+          <!-- Toolbar: Search Bar, Show Inactive Toggle, Create Button -->
+          <div class="module-toolbar">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="cbSearchInput" class="search-input" placeholder="Search by company name, code, address, country...">
+            </div>
+            
+            <div class="toolbar-actions">
+              <label class="toggle-label" title="Check to show inactive certification bodies">
+                <input type="checkbox" id="cbShowInactiveToggle">
+                <span>Show Inactive</span>
+              </label>
+              <button type="button" id="btnNewCB" class="btn-primary">+ New Certification Body</button>
+            </div>
+          </div>
+
+          <!-- Data Table -->
+          <div class="data-table-container">
+            <table class="data-table" id="cbTable">
+              <thead>
+                <tr>
+                  <th class="sortable-header" id="thCompanyName" title="Click to sort by Company Name">
+                    Company Name <span class="sort-icon" id="sortIconCompanyName">▲</span>
+                  </th>
+                  <th>Status</th>
+                  <th>Billing Email</th>
+                  <th>Address</th>
+                  <th>Country</th>
+                  <th style="text-align: right; width: 100px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="cbTableBody">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading certification bodies...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- View 3: Auditees -->
+        <section id="view-auditees" class="view-section">
+          <div class="page-header">
+            <h2 class="page-title">Auditees</h2>
+            <p class="page-subtitle">Auditee company records, site locations, and contacts.</p>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-title">Registered Auditees</span>
+              <span class="stat-value" id="stat-auditees">-</span>
+            </div>
+          </div>
+
+          <div class="placeholder-card">
+            <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <h3>Auditees Directory</h3>
+            <p>Auditee companies and sites ready for management.</p>
+          </div>
+        </section>
+
+        <!-- View 4: Auditors -->
+        <section id="view-auditors" class="view-section">
+          <div class="page-header">
+            <h2 class="page-title">Auditors</h2>
+            <p class="page-subtitle">Directory of qualified auditors, CB onboardings, and program accreditations.</p>
+          </div>
+
+          <!-- Toolbar: Search Bar, Show Inactive Toggle, Create Button -->
+          <div class="module-toolbar">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="auditorSearchInput" class="search-input" placeholder="Search by name, email, city, country, APSCA nr...">
+            </div>
+            
+            <div class="toolbar-actions">
+              <label class="toggle-label" title="Check to show inactive auditors">
+                <input type="checkbox" id="auditorShowInactiveToggle">
+                <span>Show Inactive</span>
+              </label>
+              
+              <button type="button" id="btnNewAuditor" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.35rem;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Add New Auditor
+              </button>
+            </div>
+          </div>
+
+          <!-- Data Table for Auditors Directory -->
+          <div class="data-table-container">
+            <table class="data-table" id="auditorsTable">
+              <thead>
+                <tr>
+                  <th class="sortable-header" id="thAuditorID">Auditor ID <span class="sort-icon">↕</span></th>
+                  <th class="sortable-header" id="thAuditorName">Auditor Name <span class="sort-icon">↕</span></th>
+                  <th>Gender</th>
+                  <th>Email</th>
+                  <th>Mobile Nr</th>
+                  <th>Lead Auditor</th>
+                  <th>APSCA Nr</th>
+                  <th>Employment Type</th>
+                  <th>City / Area</th>
+                  <th>Country</th>
+                  <th style="width: 100px;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="auditorsTableBody">
+                <tr>
+                  <td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading auditors directory...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- View 5: Reporting -->
+        <section id="view-reporting" class="view-section">
+          <div class="page-header">
+            <h2 class="page-title">Reporting</h2>
+            <p class="page-subtitle">Generate manday reports, cost calculations, and analytics.</p>
+          </div>
+
+          <div class="placeholder-card">
+            <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            <h3>Reporting Engine</h3>
+            <p>Audit report insights and manday default calculations.</p>
+          </div>
+        </section>
+
+        <!-- View 6: Administration -->
+        <section id="view-administration" class="view-section">
+          <div class="page-header">
+            <h2 class="page-title">Administration</h2>
+            <p class="page-subtitle">System settings, users, permissions, and email templates.</p>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-title">System Users</span>
+              <span class="stat-value" id="stat-users">-</span>
+            </div>
+          </div>
+
+          <div class="placeholder-card">
+            <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <h3>Administration Portal</h3>
+            <p>Manage user accounts, roles, and system parameters.</p>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal: Edit / Create Certification Body -->
+  <div id="cbModal" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title" id="cbModalTitle">Edit Certification Body</h3>
+        <button type="button" class="modal-close-btn" id="cbModalCloseBtn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="cbForm">
+          <input type="hidden" id="cb_id" name="ID">
+
+          <!-- Modal Tab Navigation -->
+          <div class="modal-tabs">
+            <button type="button" class="tab-btn active" data-tab="tab-general">General &amp; Billing Info</button>
+            <button type="button" class="tab-btn" data-tab="tab-rates">Rates &amp; Terms</button>
+            <button type="button" class="tab-btn" data-tab="tab-contacts">Contacts</button>
+          </div>
+
+          <!-- Tab 1: General & Billing -->
+          <div id="tab-general" class="tab-content active">
+            <div class="form-grid-custom-gen">
+              <div class="form-group">
+                <label class="form-label" for="cb_Company_Name">Company Name *</label>
+                <input type="text" id="cb_Company_Name" name="Company_Name" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cb_Customer_Number">Customer Number</label>
+                <input type="text" id="cb_Customer_Number" name="Customer_Number" class="form-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cb_Code">Code</label>
+                <input type="text" id="cb_Code" name="Code" class="form-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cb_Status">Status</label>
+                <select id="cb_Status" name="Status" class="form-input select-input">
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="cb_Billing_Physical_Address">Physical Address</label>
+              <input type="text" id="cb_Billing_Physical_Address" name="Billing_Physical_Address" class="form-input">
+            </div>
+
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label class="form-label" for="cb_Billing_Country">Billing Country</label>
+                <select id="cb_Billing_Country" name="Billing_Country" class="form-input select-input">
+                  <option value="">-- Select Country --</option>
+                  {% for c in countries %}
+                  <option value="{{ c }}">{{ c }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label class="form-label" for="cb_Billing_Contact_Name">Billing Contact Name</label>
+                <input type="text" id="cb_Billing_Contact_Name" name="Billing_Contact_Name" class="form-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cb_Billing_Email">Billing Email</label>
+                <input type="email" id="cb_Billing_Email" name="Billing_Email" class="form-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cb_Billing_Tel">Billing Tel</label>
+                <input type="text" id="cb_Billing_Tel" name="Billing_Tel" class="form-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Rates & Terms -->
+          <div id="tab-rates" class="tab-content">
+            <div class="form-grid-5">
+              <div class="form-group">
+                <label class="form-label" for="cb_Man_Day_Rate">Man-Day Rate</label>
+                <input type="number" step="0.01" id="cb_Man_Day_Rate" name="Man_Day_Rate" class="form-input" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cb_Report_Fee">Report Fee</label>
+                <input type="number" step="0.01" id="cb_Report_Fee" name="Report_Fee" class="form-input" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cb_Per_KM_Rate">Per KM Rate</label>
+                <input type="number" step="0.01" id="cb_Per_KM_Rate" name="Per_KM_Rate" class="form-input" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cb_Travel_Time_Rate_perHour">Travel Time (/hr)</label>
+                <input type="number" step="0.01" id="cb_Travel_Time_Rate_perHour" name="Travel_Time_Rate_perHour" class="form-input" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="cb_Hotel_perNight_Rate">Hotel (/night)</label>
+                <input type="number" step="0.01" id="cb_Hotel_perNight_Rate" name="Hotel_perNight_Rate" class="form-input" placeholder="0.00">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+              <label class="form-label" for="cb_Quote_Terms">Quote Terms</label>
+              <textarea id="cb_Quote_Terms" name="Quote_Terms" class="form-input" rows="2"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="cb_Comments">Comments</label>
+              <textarea id="cb_Comments" name="Comments" class="form-input" rows="2"></textarea>
+            </div>
+          </div>
+
+          <!-- Tab 3: Contacts -->
+          <div id="tab-contacts" class="tab-content">
+            <div class="subform-container">
+              <div class="subform-header">
+                <span class="subform-title">Contacts</span>
+                <button type="button" id="btnAddContactRow" class="btn-secondary">+ Add Contact</button>
+              </div>
+              <div style="overflow-x: auto;">
+                <table class="data-table subform-table">
+                  <thead>
+                    <tr>
+                      <th>First Name</th>
+                      <th>Last Name</th>
+                      <th>Position</th>
+                      <th>Tel</th>
+                      <th>Mobile</th>
+                      <th>Email</th>
+                      <th style="width: 100px;">Status</th>
+                      <th style="width: 50px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="contactsSubformBody">
+                    <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1rem;">No contacts linked. Click "+ Add Contact" to create one.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="btnCancelCB" class="btn-secondary">Close</button>
+        <button type="button" id="btnSaveCB" class="btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auditor Pop-up Modal -->
+  <div id="auditorModal" class="modal-overlay">
+    <div class="modal-container modal-large modal-xl" style="max-width: 1150px;">
+      <div class="modal-header" style="background-color: var(--color-structure); padding: 1rem 1.5rem;">
+        <div>
+          <h3 id="auditorModalTitle" class="modal-title" style="color: #ffffff; margin: 0;">Auditor Profile</h3>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" id="btnSaveAuditor" class="btn-primary" style="padding: 0.4rem 1rem;">Save &amp; Close</button>
+          <button type="button" id="btnCancelAuditor" class="btn-secondary" style="padding: 0.4rem 0.9rem;">Close</button>
+        </div>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem 1.5rem;">
+        
+        <!-- Auditor Header Form (Grid Mapped to Image 2) -->
+        <form id="auditorForm" onsubmit="return false;" style="background: #f8fafc; padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-light); margin-bottom: 1.25rem;">
+          <input type="hidden" id="auditor_AuditorID_hidden" name="AuditorID">
+          
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem 1rem;">
+            <!-- Column 1 -->
+            <div class="form-group">
+              <label class="form-label" for="auditor_AuditorID">Auditor ID</label>
+              <input type="text" id="auditor_AuditorID" class="form-input" readonly placeholder="Auto">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="auditor_First_Name">First Name <span style="color: #dc2626;">*</span></label>
+              <input type="text" id="auditor_First_Name" name="First_Name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="auditor_Gender">Gender</label>
+              <select id="auditor_Gender" name="Gender" class="select-input form-input">
+                <option value="">- Select -</option>
+                <option value="M">M</option>
+                <option value="F">F</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="auditor_Email">Email</label>
+              <input type="email" id="auditor_Email" name="Email" class="form-input">
+            </div>
+
+            <!-- Column 2 -->
+            <div class="form-group">
+              <label class="form-label" for="auditor_Status">Status</label>
+              <select id="auditor_Status" name="Status" class="select-input form-input">
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="auditor_Last_Name">Last Name <span style="color: #dc2626;">*</span></label>
+              <input type="text" id="auditor_Last_Name" name="Last_Name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="auditor_Mobile_Nr">Mobile Nr</label>
+              <input type="text" id="auditor_Mobile_Nr" name="Mobile_Nr" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="auditor_Nationality">Nationality</label>
+              <select id="auditor_Nationality" name="Nationality" class="select-input form-input">
+                <option value="">- Select Country -</option>
+                {% for country in countries %}
+                <option value="{{ country }}">{{ country }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Column 3 -->
+            <div class="form-group" style="display: flex; align-items: flex-end; padding-bottom: 0.4rem;">
+              <label class="toggle-label" style="font-weight: 600;">
+                <input type="checkbox" id="auditor_Lead_Auditor" name="Lead_Auditor">
+                <span>Lead Auditor</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="auditor_APSCA_Nr">APSCA Nr</label>
+              <input type="text" id="auditor_APSCA_Nr" name="APSCA_Nr" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="auditor_Employment_Type">Employment Type</label>
+              <select id="auditor_Employment_Type" name="Employment_Type" class="select-input form-input">
+                <option value="">- Select -</option>
+                <option value="Direct">Direct</option>
+                <option value="Freelance">Freelance</option>
+                <option value="Subcontractor">Subcontractor</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="auditor_Residence_City">City/Area of Residence</label>
+              <input type="text" id="auditor_Residence_City" name="Residence_City" class="form-input">
+            </div>
+
+            <!-- Column 4 -->
+            <div class="form-group">
+              <label class="form-label" for="auditor_Residence_Country">Country of Residence</label>
+              <select id="auditor_Residence_Country" name="Residence_Country" class="select-input form-input">
+                <option value="">- Select Country -</option>
+                {% for country in countries %}
+                <option value="{{ country }}">{{ country }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group" style="grid-column: span 3;">
+              <label class="form-label" for="auditor_Residence_Address">Residential Address</label>
+              <input type="text" id="auditor_Residence_Address" name="Residence_Address" class="form-input" placeholder="Full residential street address...">
+            </div>
+          </div>
+        </form>
+
+        <!-- Tab Navigation Bar for Auditor Subforms -->
+        <div class="tab-nav-bar" style="display: flex; gap: 0.25rem; border-bottom: 2px solid var(--border-light); margin-bottom: 1rem; overflow-x: auto;">
+          <button type="button" class="tab-btn active" data-tab="auditor-tab-cb-onboarding">CB Onboarding &amp; Compliance Status</button>
+          <button type="button" class="tab-btn" data-tab="auditor-tab-programs">Audit Programs per CB &amp; Training</button>
+          <button type="button" class="tab-btn" data-tab="auditor-tab-internal-wf">Internal Onboarding Workflow</button>
+          <button type="button" class="tab-btn" data-tab="auditor-tab-cb-wf">CB Onboarding Workflow</button>
+          <button type="button" class="tab-btn" data-tab="auditor-tab-recurring">CB Recurring Requirements</button>
+          <button type="button" class="tab-btn" data-tab="auditor-tab-history">Audit History</button>
+        </div>
+
+        <!-- Tab 1: CB Onboarding & Compliance Status (Image 3) -->
+        <div id="auditor-tab-cb-onboarding" class="auditor-tab-content active">
+          <div class="subform-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--color-structure); margin: 0;">Certification Bodies Onboarded Status</h4>
+            <button type="button" id="btnAddAuditorCBRow" class="btn-secondary btn-sm">+ Add Certification Body</button>
+          </div>
+          <div class="table-container" style="max-height: 340px; overflow-y: auto;">
+            <table class="data-table subform-table">
+              <thead>
+                <tr>
+                  <th>Certification Body</th>
+                  <th style="width: 220px;">Onboarding Status</th>
+                  <th style="width: 60px; text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="auditorCBSubformBody">
+                <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No CB onboardings recorded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 2: Audit Programs per CB & Training (Image 4) -->
+        <div id="auditor-tab-programs" class="auditor-tab-content" style="display: none;">
+          <div class="subform-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+              <label for="auditorProgCBFilter" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Certification Body Filter:</label>
+              <select id="auditorProgCBFilter" class="select-input" style="padding: 0.35rem 0.75rem; font-size: 0.85rem;">
+                <option value="ALL">All Certification Bodies</option>
+              </select>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="button" id="btnSeedAuditorPrograms" class="btn-secondary btn-sm" style="background-color: #0284c7; color: #ffffff; border: none;">
+                ⚡ Temp Function - Update Auditor with all missing audit programs &amp; CB's as Compliant
+              </button>
+              <button type="button" id="btnAddAuditorProgRow" class="btn-secondary btn-sm">+ Add Program</button>
+            </div>
+          </div>
+          <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+            <table class="data-table subform-table">
+              <thead>
+                <tr>
+                  <th style="min-width: 160px;">Certification Body</th>
+                  <th style="min-width: 140px;">Program</th>
+                  <th style="width: 140px;">Compliant / Accredited</th>
+                  <th style="width: 90px; text-align: center;">Training Required</th>
+                  <th style="width: 130px;">Training / Accred. Expiry</th>
+                  <th style="width: 130px;">Accred Last Complete</th>
+                  <th style="width: 90px; text-align: center;">Evidence Uploaded</th>
+                  <th style="min-width: 160px;">Evidence Path</th>
+                  <th style="width: 50px; text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="auditorProgSubformBody">
+                <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No program accreditations recorded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 3: Internal Onboarding Workflow -->
+        <div id="auditor-tab-internal-wf" class="auditor-tab-content" style="display: none;">
+          <div style="padding: 2rem; text-align: center; color: var(--text-muted); background: #f8fafc; border-radius: 8px;">
+            <h4>Internal Onboarding Workflow</h4>
+            <p>Track internal background checks, interviewer approvals, and compliance verification.</p>
+          </div>
+        </div>
+
+        <!-- Tab 4: CB Onboarding Workflow -->
+        <div id="auditor-tab-cb-wf" class="auditor-tab-content" style="display: none;">
+          <div style="padding: 2rem; text-align: center; color: var(--text-muted); background: #f8fafc; border-radius: 8px;">
+            <h4>CB Onboarding Workflow</h4>
+            <p>Track certification body application forms, approval letters, and sponsor sign-offs.</p>
+          </div>
+        </div>
+
+        <!-- Tab 5: CB Recurring Requirements -->
+        <div id="auditor-tab-recurring" class="auditor-tab-content" style="display: none;">
+          <div style="padding: 2rem; text-align: center; color: var(--text-muted); background: #f8fafc; border-radius: 8px;">
+            <h4>CB Recurring Requirements</h4>
+            <p>Annual refresher training, integrity policy renewals, and shadow audit logs.</p>
+          </div>
+        </div>
+
+        <!-- Tab 6: Audit History -->
+        <div id="auditor-tab-history" class="auditor-tab-content" style="display: none;">
+          <div style="padding: 2rem; text-align: center; color: var(--text-muted); background: #f8fafc; border-radius: 8px;">
+            <h4>Audit History</h4>
+            <p>Log of assigned audits, executed work, and client feedback.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Unsaved Changes Confirmation Modal -->
+  <div id="unsavedModal" class="modal-overlay">
+    <div class="unsaved-modal-container">
+      <svg class="unsaved-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+      <h4 class="unsaved-title">Unsaved Changes</h4>
+      <p class="unsaved-desc">You have modified this Certification Body or its contacts. Do you want to save your changes before closing?</p>
+      <div class="unsaved-actions">
+        <button type="button" id="btnUnsavedSave" class="btn-primary">Save &amp; Close</button>
+        <button type="button" id="btnUnsavedDiscard" class="btn-danger">Discard Changes</button>
+        <button type="button" id="btnUnsavedCancel" class="btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sync Result Notification Pop-up Modal -->
+  <div id="syncResultModal" class="modal-overlay">
+    <div class="unsaved-modal-container" style="max-width: 440px; text-align: center;">
+      <div id="syncResultIconBox" style="width: 56px; height: 56px; border-radius: 50%; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem auto;">
+        <svg id="syncResultSvgSuccess" viewBox="0 0 24 24" width="30" height="30" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        <svg id="syncResultSvgError" viewBox="0 0 24 24" width="30" height="30" stroke="#dc2626" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+      </div>
+      <h4 id="syncResultTitle" class="unsaved-title" style="margin-bottom: 0.5rem; font-size: 1.2rem;">Data Synchronization Complete!</h4>
+      <p id="syncResultMessage" class="unsaved-desc" style="margin-bottom: 1.5rem; font-size: 0.92rem;">Successfully synchronized 31 tables.</p>
+      <div style="display: flex; justify-content: center;">
+        <button type="button" id="btnSyncResultOk" class="btn-primary" style="padding: 0.55rem 2.2rem; font-size: 0.95rem; font-weight: 600; min-width: 120px; cursor: pointer;">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pop-up Modal for Chart Drilldown Data Table -->
+  <div id="drilldownModal" class="modal-overlay">
+    <div class="modal-container modal-large">
+      <div class="modal-header">
+        <div>
+          <h3 id="drilldownModalTitle" class="modal-title">Audit Workflows &amp; Quotes</h3>
+          <p id="drilldownModalSubtitle" class="modal-subtitle" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;"></p>
+        </div>
+        <button type="button" class="modal-close-btn" id="btnCloseDrilldownModal" title="Close Pop-up" aria-label="Close Pop-up">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem 1.5rem;">
+        
+        <!-- Drilldown Toolbar: Search Input + Record Counter + Export to XLSX Button -->
+        <div class="drilldown-toolbar" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div class="search-input-wrapper" style="max-width: 360px; flex: 1; min-width: 240px;">
+            <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="drilldownSearchInput" placeholder="Search records in pop-up..." class="form-input" style="padding-left: 2.2rem;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <div id="drilldownBadge" class="drilldown-badge">
+              Showing <span id="drilldownCount">0</span> records
+            </div>
+            <button type="button" id="btnExportDrilldownXLSX" class="btn-primary" style="background-color: #10b981; border-color: #10b981; color: #ffffff; padding: 0.45rem 1rem; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 6px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" title="Export filtered records to Microsoft Excel (.xlsx)">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+              <span>Export to XLSX</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Scrollable Table -->
+        <div class="table-container" style="max-height: 480px; overflow-y: auto; margin-top: 1rem;">
+          <table class="data-table drilldown-table">
+            <thead>
+              <tr>
+                <th class="sortable-th drilldown-col-wfid" data-sort-key="WFID">WFID <span class="sort-icon">↕</span></th>
+                <th class="sortable-th drilldown-col-status" data-sort-key="Workflow_Status">Audit Status <span class="sort-icon">↕</span></th>
+                <th class="sortable-th drilldown-col-cb" data-sort-key="CB_Name">Certification Body <span class="sort-icon">↕</span></th>
+                <th class="sortable-th drilldown-col-auditee" data-sort-key="Auditee_Name">Auditee <span class="sort-icon">↕</span></th>
+                <th class="sortable-th drilldown-col-site" data-sort-key="Site_Location">Site Location <span class="sort-icon">↕</span></th>
+                <th class="sortable-th drilldown-col-program" data-sort-key="Audit_Program">Program <span class="sort-icon">↕</span></th>
+                <th class="sortable-th drilldown-col-date" data-sort-key="Audit_Start">Start Date <span class="sort-icon">↕</span></th>
+                <th class="sortable-th drilldown-col-date" data-sort-key="Audit_End">End Date <span class="sort-icon">↕</span></th>
+                <th class="sortable-th drilldown-col-mandays" data-sort-key="Total_Mandays">Mandays <span class="sort-icon">↕</span></th>
+                <th class="sortable-th drilldown-col-quote-status" data-sort-key="Quote_Status">Quote Status <span class="sort-icon">↕</span></th>
+                <th class="sortable-th drilldown-col-quote-total" data-sort-key="Quote_SubTotal">Quoted SubTotal <span class="sort-icon">↕</span></th>
+              </tr>
+            </thead>
+            <tbody id="drilldownTableBody">
+              <!-- Rows injected by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="padding: 1rem 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn-secondary" id="btnCloseDrilldownModalFooter">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Navigation view switching
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Remove active class from all nav items
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Hide all views and show selected
+        const viewId = 'view-' + this.getAttribute('data-view');
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+        
+        const targetView = document.getElementById(viewId);
+        if (targetView) {
+          targetView.classList.add('active');
+          const viewName = this.getAttribute('data-view');
+          if (viewName === 'dashboard') {
+            loadDashboardAnalytics();
+          } else if (viewName === 'audits-quotes') {
+            loadAuditsList();
+          } else if (viewName === 'certification-bodies') {
+            loadCBList();
+          } else if (viewName === 'auditors') {
+            loadAuditorsList();
+          }
+        }
+
+        // On mobile screens, close sidebar drawer after navigating
+        if (window.innerWidth <= 768 && typeof closeMobileSidebar === 'function') {
+          closeMobileSidebar();
+        }
+      });
+    });
+
+    // Fetch dashboard stats from SQL Server API
+    async function loadStats() {
+      try {
+        const response = await fetch('/api/dashboard-stats');
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        if (response.ok) {
+          const stats = await response.json();
+          const setText = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val !== null && val !== undefined ? val : '0';
+          };
+          setText('stat-audits', stats.audits_count);
+          setText('stat-cb', stats.cb_count);
+          setText('stat-auditees', stats.auditees_count);
+          setText('stat-auditors', stats.auditors_count);
+          setText('stat-quotes', stats.quotes_count);
+          setText('stat-users', stats.users_count);
+        }
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    }
+
+    loadStats();
+
+    // --- Certification Bodies Module JS ---
+    let cbSortDir = 'asc';
+    let cbIsDirty = false;
+    let currentCBId = null;
+    function populateCountryDropdown(selectedValue = '') {
+      const select = document.getElementById('cb_Billing_Country');
+      if (!select) return;
+
+      const targetVal = (selectedValue || '').trim();
+      let foundMatch = false;
+
+      for (let i = 0; i < select.options.length; i++) {
+        if (targetVal && select.options[i].value.toLowerCase() === targetVal.toLowerCase()) {
+          select.selectedIndex = i;
+          foundMatch = true;
+          break;
+        }
+      }
+
+      if (targetVal && !foundMatch) {
+        const opt = document.createElement('option');
+        opt.value = targetVal;
+        opt.textContent = targetVal;
+        select.appendChild(opt);
+        select.value = targetVal;
+      } else if (!targetVal) {
+        select.selectedIndex = 0;
+      }
+    }
+
+    // Load CB table data with Billing Email and Clickable / Edit actions
+    async function loadCBList() {
+      const tbody = document.getElementById('cbTableBody');
+      if (!tbody) return;
+      
+      const searchEl = document.getElementById('cbSearchInput');
+      const searchVal = searchEl ? searchEl.value : '';
+      const showInactive = document.getElementById('cbShowInactiveToggle')?.checked;
+      const statusFilter = showInactive ? 'All' : 'Active';
+
+      try {
+        const url = `/api/certification-bodies?q=${encodeURIComponent(searchVal)}&sort_dir=${cbSortDir}&status_filter=${statusFilter}`;
+        const response = await fetch(url);
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        if (!response.ok) throw new Error('Failed to load certification bodies');
+        const data = await response.json();
+
+        if (!data || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No certification bodies found.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.map(item => {
+          const statusClass = (item.Status || '').toLowerCase() === 'active' ? 'active' : 'inactive';
+          return `
+            <tr style="cursor: pointer;" onclick="openCBModal(${item.ID})" title="Click row to view / edit profile">
+              <td><strong>${escapeHtml(item.Company_Name || '')}</strong> ${item.Code ? `<span style="color: #64748b; font-size: 0.85rem;">(${escapeHtml(item.Code)})</span>` : ''}</td>
+              <td><span class="status-badge ${statusClass}">${escapeHtml(item.Status || 'Active')}</span></td>
+              <td>${item.Billing_Email ? `<a href="mailto:${escapeHtml(item.Billing_Email)}" onclick="event.stopPropagation();" style="color: var(--accent); font-weight: 500; text-decoration: none;" title="Send email">✉️ ${escapeHtml(item.Billing_Email)}</a>` : '<span style="color: var(--text-muted);">-</span>'}</td>
+              <td>${escapeHtml(item.Billing_Physical_Address || '-')}</td>
+              <td>${escapeHtml(item.Billing_Country || '-')}</td>
+              <td style="text-align: right;">
+                <button type="button" class="btn-sm" style="padding: 0.35rem 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-surface); color: var(--primary-dark); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;" onclick="event.stopPropagation(); openCBModal(${item.ID});" title="Edit Certification Body">
+                  ✏️ Edit
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #dc2626; padding: 2rem;">Error loading data from server.</td></tr>';
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Toggle sorting by Company Name
+    const thCompanyName = document.getElementById('thCompanyName');
+    if (thCompanyName) {
+      thCompanyName.addEventListener('click', function() {
+        cbSortDir = cbSortDir === 'asc' ? 'desc' : 'asc';
+        const icon = document.getElementById('sortIconCompanyName');
+        if (icon) icon.textContent = cbSortDir === 'asc' ? '▲' : '▼';
+        loadCBList();
+      });
+    }
+
+    // Search listener and Show Inactive toggle
+    let searchDebounceTimer;
+    const cbSearchInput = document.getElementById('cbSearchInput');
+    if (cbSearchInput) {
+      cbSearchInput.addEventListener('input', function() {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(loadCBList, 250);
+      });
+    }
+
+    const cbShowInactiveToggle = document.getElementById('cbShowInactiveToggle');
+    if (cbShowInactiveToggle) {
+      cbShowInactiveToggle.addEventListener('change', () => loadCBList());
+    }
+
+    const btnNewCB = document.getElementById('btnNewCB');
+    if (btnNewCB) {
+      btnNewCB.addEventListener('click', () => openCBModal(null));
+    }
+
+    // Modal Tabs Navigation
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        const targetTab = document.getElementById(this.getAttribute('data-tab'));
+        if (targetTab) targetTab.classList.add('active');
+      });
+    });
+
+    // Open CB Modal for Create or Edit
+    async function openCBModal(id) {
+      currentCBId = id;
+      cbIsDirty = false;
+      document.getElementById('cbForm').reset();
+      document.getElementById('contactsSubformBody').innerHTML = '';
+      
+      // Reset to first tab
+      document.querySelectorAll('.tab-btn').forEach((b, idx) => b.classList.toggle('active', idx === 0));
+      document.querySelectorAll('.tab-content').forEach((c, idx) => c.classList.toggle('active', idx === 0));
+
+      const formatRate = (val) => (val !== null && val !== undefined && val !== '') ? Number(val).toFixed(2) : '';
+
+      if (id) {
+        document.getElementById('cbModalTitle').textContent = 'Edit Certification Body';
+        try {
+          const res = await fetch(`/api/certification-bodies/${id}`);
+          if (!res.ok) throw new Error('Failed to fetch details');
+          const data = await res.json();
+          
+          document.getElementById('cb_id').value = data.ID || '';
+          document.getElementById('cb_Company_Name').value = data.Company_Name || '';
+          document.getElementById('cb_Status').value = data.Status || 'Active';
+          document.getElementById('cb_Code').value = data.Code || '';
+          document.getElementById('cb_Customer_Number').value = data.Customer_Number || '';
+          document.getElementById('cb_Billing_Physical_Address').value = data.Billing_Physical_Address || '';
+          
+          populateCountryDropdown(data.Billing_Country || '');
+
+          document.getElementById('cb_Billing_Contact_Name').value = data.Billing_Contact_Name || '';
+          document.getElementById('cb_Billing_Email').value = data.Billing_Email || '';
+          document.getElementById('cb_Billing_Tel').value = data.Billing_Tel || '';
+          
+          document.getElementById('cb_Man_Day_Rate').value = formatRate(data.Man_Day_Rate);
+          document.getElementById('cb_Report_Fee').value = formatRate(data.Report_Fee);
+          document.getElementById('cb_Per_KM_Rate').value = formatRate(data.Per_KM_Rate);
+          document.getElementById('cb_Travel_Time_Rate_perHour').value = formatRate(data.Travel_Time_Rate_perHour);
+          document.getElementById('cb_Hotel_perNight_Rate').value = formatRate(data.Hotel_perNight_Rate);
+          
+          document.getElementById('cb_Quote_Terms').value = data.Quote_Terms || '';
+          document.getElementById('cb_Comments').value = data.Comments || '';
+
+          // Render Contacts
+          if (data.contacts && data.contacts.length > 0) {
+            data.contacts.forEach(c => addContactRow(c));
+          } else {
+            renderEmptyContactSubform();
+          }
+        } catch (err) {
+          alert('Could not load record details: ' + err.message);
+          return;
+        }
+      } else {
+        document.getElementById('cbModalTitle').textContent = 'New Certification Body';
+        document.getElementById('cb_id').value = '';
+        populateCountryDropdown('');
+        renderEmptyContactSubform();
+      }
+
+      document.getElementById('cbModal').classList.add('active');
+      cbIsDirty = false;
+      attachDirtyTracker();
+    }
+    window.openCBModal = openCBModal;
+
+    function renderEmptyContactSubform() {
+      document.getElementById('contactsSubformBody').innerHTML = `
+        <tr id="emptyContactsRow"><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1rem;">No contacts linked. Click "+ Add Contact" to create one.</td></tr>
+      `;
+    }
+
+    // Add a contact row to subform
+    function addContactRow(c = {}) {
+      const tbody = document.getElementById('contactsSubformBody');
+      const emptyRow = document.getElementById('emptyContactsRow');
+      if (emptyRow) emptyRow.remove();
+
+      const tr = document.createElement('tr');
+      tr.className = 'contact-row';
+      tr.innerHTML = `
+        <input type="hidden" class="contact-id" value="${c.ID || ''}">
+        <td><input type="text" class="contact-first-name" value="${escapeHtml(c.First_Name || '')}"></td>
+        <td><input type="text" class="contact-last-name" value="${escapeHtml(c.Last_Name || '')}"></td>
+        <td><input type="text" class="contact-position" value="${escapeHtml(c.Position || '')}"></td>
+        <td><input type="text" class="contact-tel" value="${escapeHtml(c.Tel || '')}"></td>
+        <td><input type="text" class="contact-mobile" value="${escapeHtml(c.Mobile || '')}"></td>
+        <td><input type="email" class="contact-email" value="${escapeHtml(c.Email || '')}"></td>
+        <td>
+          <select class="contact-status">
+            <option value="Active" ${c.Status === 'Inactive' ? '' : 'selected'}>Active</option>
+            <option value="Inactive" ${c.Status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+          </select>
+        </td>
+        <td><button type="button" class="btn-danger btn-delete-contact">&times;</button></td>
+      `;
+
+      tr.querySelectorAll('input, select').forEach(elem => {
+        elem.addEventListener('input', () => { cbIsDirty = true; });
+        elem.addEventListener('change', () => { cbIsDirty = true; });
+      });
+
+      tr.querySelector('.btn-delete-contact').addEventListener('click', function() {
+        tr.remove();
+        cbIsDirty = true;
+        if (tbody.querySelectorAll('.contact-row').length === 0) {
+          renderEmptyContactSubform();
+        }
+      });
+
+      tbody.appendChild(tr);
+    }
+
+    const btnAddContactRow = document.getElementById('btnAddContactRow');
+    if (btnAddContactRow) {
+      btnAddContactRow.addEventListener('click', function() {
+        addContactRow();
+        cbIsDirty = true;
+      });
+    }
+
+    // Track Form Changes (Dirty Checking)
+    function attachDirtyTracker() {
+      const form = document.getElementById('cbForm');
+      if (!form) return;
+      form.querySelectorAll('input, select, textarea').forEach(elem => {
+        elem.addEventListener('input', () => { cbIsDirty = true; });
+        elem.addEventListener('change', () => { cbIsDirty = true; });
+      });
+    }
+
+    // Modal Close Logic with Auto-Save on Close
+    async function attemptCloseCBModal() {
+      if (cbIsDirty) {
+        const companyName = document.getElementById('cb_Company_Name') ? document.getElementById('cb_Company_Name').value.trim() : '';
+        if (companyName) {
+          const saved = await saveCBData();
+          if (saved) return;
+        }
+      }
+      forceCloseCBModal();
+    }
+
+    function forceCloseCBModal() {
+      const cbModal = document.getElementById('cbModal');
+      const unsavedModal = document.getElementById('unsavedModal');
+      if (cbModal) cbModal.classList.remove('active');
+      if (unsavedModal) unsavedModal.classList.remove('active');
+      cbIsDirty = false;
+    }
+
+    const cbModalCloseBtn = document.getElementById('cbModalCloseBtn');
+    if (cbModalCloseBtn) cbModalCloseBtn.addEventListener('click', attemptCloseCBModal);
+
+    const btnCancelCB = document.getElementById('btnCancelCB');
+    if (btnCancelCB) btnCancelCB.addEventListener('click', attemptCloseCBModal);
+
+    const cbModalOverlay = document.getElementById('cbModal');
+    if (cbModalOverlay) {
+      cbModalOverlay.addEventListener('click', function(e) {
+        if (e.target === cbModalOverlay) {
+          attemptCloseCBModal();
+        }
+      });
+    }
+
+    // Unsaved Dialog Actions
+    const btnUnsavedSave = document.getElementById('btnUnsavedSave');
+    if (btnUnsavedSave) {
+      btnUnsavedSave.addEventListener('click', async function() {
+        const uModal = document.getElementById('unsavedModal');
+        if (uModal) uModal.classList.remove('active');
+        const saved = await saveCBData();
+        if (saved) forceCloseCBModal();
+      });
+    }
+
+    const btnUnsavedDiscard = document.getElementById('btnUnsavedDiscard');
+    if (btnUnsavedDiscard) {
+      btnUnsavedDiscard.addEventListener('click', function() {
+        forceCloseCBModal();
+      });
+    }
+
+    const btnUnsavedCancel = document.getElementById('btnUnsavedCancel');
+    if (btnUnsavedCancel) {
+      btnUnsavedCancel.addEventListener('click', function() {
+        const uModal = document.getElementById('unsavedModal');
+        if (uModal) uModal.classList.remove('active');
+      });
+    }
+
+    // Save Certification Body
+    async function saveCBData() {
+      const companyName = document.getElementById('cb_Company_Name').value.trim();
+      if (!companyName) {
+        alert('Company Name is required.');
+        document.querySelectorAll('.tab-btn')[0].click();
+        document.getElementById('cb_Company_Name').focus();
+        return false;
+      }
+
+      // Collect contacts
+      const contacts = [];
+      document.querySelectorAll('#contactsSubformBody .contact-row').forEach(row => {
+        const idVal = row.querySelector('.contact-id').value;
+        contacts.push({
+          ID: idVal ? parseInt(idVal) : null,
+          First_Name: row.querySelector('.contact-first-name').value.trim(),
+          Last_Name: row.querySelector('.contact-last-name').value.trim(),
+          Position: row.querySelector('.contact-position').value.trim(),
+          Tel: row.querySelector('.contact-tel').value.trim(),
+          Mobile: row.querySelector('.contact-mobile').value.trim(),
+          Email: row.querySelector('.contact-email').value.trim(),
+          Status: row.querySelector('.contact-status').value
+        });
+      });
+
+      const parseFloatOrNull = (val) => {
+        if (!val || val.trim() === '') return null;
+        const num = parseFloat(val);
+        return isNaN(num) ? null : num;
+      };
+
+      const payload = {
+        Company_Name: companyName,
+        Status: document.getElementById('cb_Status').value,
+        Code: document.getElementById('cb_Code').value.trim() || null,
+        Customer_Number: document.getElementById('cb_Customer_Number').value.trim() || null,
+        Billing_Physical_Address: document.getElementById('cb_Billing_Physical_Address').value.trim() || null,
+        Billing_Country: document.getElementById('cb_Billing_Country').value.trim() || null,
+        Billing_Contact_Name: document.getElementById('cb_Billing_Contact_Name').value.trim() || null,
+        Billing_Email: document.getElementById('cb_Billing_Email').value.trim() || null,
+        Billing_Tel: document.getElementById('cb_Billing_Tel').value.trim() || null,
+        Man_Day_Rate: parseFloatOrNull(document.getElementById('cb_Man_Day_Rate').value),
+        Per_KM_Rate: parseFloatOrNull(document.getElementById('cb_Per_KM_Rate').value),
+        Travel_Time_Rate_perHour: parseFloatOrNull(document.getElementById('cb_Travel_Time_Rate_perHour').value),
+        Hotel_perNight_Rate: parseFloatOrNull(document.getElementById('cb_Hotel_perNight_Rate').value),
+        Report_Fee: parseFloatOrNull(document.getElementById('cb_Report_Fee').value),
+        Comments: document.getElementById('cb_Comments').value.trim() || null,
+        Quote_Terms: document.getElementById('cb_Quote_Terms').value.trim() || null,
+        contacts: contacts
+      };
+
+      const id = document.getElementById('cb_id').value;
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/api/certification-bodies/${id}` : '/api/certification-bodies';
+
+      try {
+        const response = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.detail || 'Save failed');
+        }
+
+        cbIsDirty = false;
+        forceCloseCBModal();
+        loadCBList();
+        loadStats();
+        return true;
+      } catch (err) {
+        alert('Error saving certification body: ' + err.message);
+        return false;
+      }
+    }
+
+    document.getElementById('btnSaveCB').addEventListener('click', saveCBData);
+
+    // Initial load when tab active
+    loadCBList();
+
+    // --- Dashboard & Analytics JS ---
+    let chart1Instance = null;
+    let chart2Instance = null;
+    let chart3Instance = null;
+    let chart4Instance = null;
+    let chart5Instance = null;
+    let chart6Instance = null;
+
+    let drilldownRawData = [];
+    let drilldownFilteredData = [];
+    let drilldownSortKey = 'WFID';
+    let drilldownSortDir = 'desc';
+
+    const palette = ['#001429', '#5AE3A7', '#0284c7', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b', '#6366f1', '#10b981'];
+
+    // Default dates: 1st and last day of current month
+    function initDashboardDates() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+
+      const formatDateStr = (d) => {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      };
+
+      document.getElementById('dashFromDate').value = formatDateStr(firstDay);
+      document.getElementById('dashToDate').value = formatDateStr(lastDay);
+    }
+
+    async function loadDashboardAnalytics() {
+      const fromDate = document.getElementById('dashFromDate').value;
+      const toDate = document.getElementById('dashToDate').value;
+
+      try {
+        const url = `/api/dashboard-analytics?from_date=${encodeURIComponent(fromDate)}&to_date=${encodeURIComponent(toDate)}`;
+        const res = await fetch(url);
+        if (res.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        if (!res.ok) throw new Error('Failed to load analytics');
+        const data = await res.json();
+
+        renderTile1Chart(data.tile1 || []);
+        renderTile2Chart(data.tile2 || []);
+        renderTile3Chart(data.tile3 || []);
+        renderTile4Chart(data.tile4 || []);
+        renderTile5Chart(data.tile5 || []);
+        renderTile6Chart(data.tile6 || []);
+      } catch (err) {
+        console.error('Error loading dashboard charts:', err);
+      }
+    }
+
+    // Chart Click Handler (Left Click & Right Click)
+    function handleChartClick(canvasId, chart, datasetIndex, index) {
+      const fromDate = document.getElementById('dashFromDate').value;
+      const toDate = document.getElementById('dashToDate').value;
+      
+      let params = { from_date: fromDate, to_date: toDate };
+      let modalTitle = 'Audit Workflows & Quotes';
+
+      if (canvasId === 'chartTile1') {
+        const rawLabel = chart.data.labels[index] || '';
+        const cbName = rawLabel.replace(/\s*\(\d+\)$/, '').trim();
+        params.cb_name = cbName;
+        modalTitle = `Audits for Certification Body: ${cbName}`;
+
+      } else if (canvasId === 'chartTile2') {
+        const rawLabel = chart.data.labels[index] || '';
+        const statusName = rawLabel.replace(/\s*\(\d+\)$/, '').trim();
+        params.workflow_status = statusName;
+        modalTitle = `Audits with Status: ${statusName}`;
+
+      } else if (canvasId === 'chartTile3') {
+        const labelObj = chart.data.labels[index];
+        const quoteStatus = Array.isArray(labelObj) ? labelObj[0] : String(labelObj);
+        params.quote_status = quoteStatus;
+        modalTitle = `Quotes with Status: ${quoteStatus}`;
+
+      } else if (canvasId === 'chartTile4') {
+        const cbName = chart.data.labels[index];
+        const datasetLabel = chart.data.datasets[datasetIndex].label;
+        params.cb_name = cbName;
+        params.quote_status = datasetLabel;
+        modalTitle = `Quotes for ${cbName} (${datasetLabel})`;
+
+      } else if (canvasId === 'chartTile5') {
+        const auditorName = chart.data.labels[index];
+        const datasetLabel = chart.data.datasets[datasetIndex].label;
+        params.auditor_name = auditorName;
+        params.workflow_status = datasetLabel;
+        modalTitle = `Audits for Auditor: ${auditorName} (${datasetLabel})`;
+
+      } else if (canvasId === 'chartTile6') {
+        const programName = chart.data.labels[index];
+        const datasetLabel = chart.data.datasets[datasetIndex].label;
+        params.audit_program = programName;
+        params.workflow_status = datasetLabel;
+        modalTitle = `Audits for Program: ${programName} (${datasetLabel})`;
+      }
+
+      openDrilldownModal(params, modalTitle);
+    }
+
+    function bindChartInteractions(canvasId, getChartInstance) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      canvas.style.cursor = 'pointer';
+
+      const processEvent = function(e) {
+        const chart = getChartInstance();
+        if (!chart) return;
+
+        let points = [];
+        try {
+          points = chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+          if (!points || points.length === 0) {
+            points = chart.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false);
+          }
+        } catch (err) {
+          console.warn('getElementsAtEventForMode error:', err);
+        }
+
+        if (points && points.length > 0) {
+          if (e.type === 'contextmenu') {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          handleChartClick(canvasId, chart, points[0].datasetIndex, points[0].index);
+        } else {
+          const titles = {
+            'chartTile1': 'Audits per Certification Body Details',
+            'chartTile2': 'Audits by Status Details',
+            'chartTile3': 'Total Quote Values Details',
+            'chartTile4': 'Quotes per Certification Body Details',
+            'chartTile5': 'Audits per Auditor Details',
+            'chartTile6': 'Audits per Audit Program Details'
+          };
+          openDrilldownModal({}, titles[canvasId] || 'Audit Workflows & Quotes Details');
+        }
+      };
+
+      canvas.oncontextmenu = function(e) {
+        e.preventDefault();
+        processEvent(e);
+        return false;
+      };
+
+      canvas.onclick = function(e) {
+        processEvent(e);
+      };
+    }
+
+    // Tile 1: Audits & Quoted Amount per Certification Body (Pie Chart with counts)
+    function renderTile1Chart(data) {
+      const ctx = document.getElementById('chartTile1').getContext('2d');
+      if (chart1Instance) chart1Instance.destroy();
+
+      if (!data || data.length === 0) {
+        chart1Instance = new Chart(ctx, { type: 'pie', data: { labels: ['No Data'], datasets: [{ data: [1], backgroundColor: ['#e2e8f0'] }] } });
+        return;
+      }
+
+      const labels = data.map(d => `${d.cb_name} (${d.audit_count})`);
+      const auditCounts = data.map(d => d.audit_count);
+      const quotedSums = data.map(d => d.total_quoted);
+
+      chart1Instance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: auditCounts,
+            backgroundColor: palette,
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, activeElements) => {
+            if (activeElements && activeElements.length > 0) {
+              handleChartClick('chartTile1', chart1Instance, activeElements[0].datasetIndex, activeElements[0].index);
+            }
+          },
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const idx = context.dataIndex;
+                  const cbName = data[idx].cb_name;
+                  const count = auditCounts[idx];
+                  const amount = quotedSums[idx];
+                  const formattedAmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(amount);
+                  return ` ${cbName}: ${count} audits (${formattedAmt} quoted)`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      bindChartInteractions('chartTile1', () => chart1Instance);
+    }
+
+    // Tile 2: Count of Audits per Status (Doughnut Chart - Order: Pending, Confirmed, Complete)
+    function renderTile2Chart(data) {
+      const ctx = document.getElementById('chartTile2').getContext('2d');
+      if (chart2Instance) chart2Instance.destroy();
+
+      if (!data || data.length === 0) {
+        chart2Instance = new Chart(ctx, { type: 'doughnut', data: { labels: ['No Data'], datasets: [{ data: [1], backgroundColor: ['#e2e8f0'] }] } });
+        return;
+      }
+
+      const targetOrder = ['Pending', 'Confirmed', 'Complete'];
+      const statusColors = {
+        'Pending': '#f59e0b',
+        'Confirmed': '#0284c7',
+        'Complete': '#5AE3A7'
+      };
+
+      const sortedData = targetOrder.map(st => {
+        const item = data.find(d => d.Status === st);
+        return { Status: st, audit_count: item ? item.audit_count : 0 };
+      });
+
+      const labels = sortedData.map(d => `${d.Status} (${d.audit_count})`);
+      const counts = sortedData.map(d => d.audit_count);
+      const bgColors = sortedData.map(d => statusColors[d.Status]);
+
+      chart2Instance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: counts,
+            backgroundColor: bgColors,
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, activeElements) => {
+            if (activeElements && activeElements.length > 0) {
+              handleChartClick('chartTile2', chart2Instance, activeElements[0].datasetIndex, activeElements[0].index);
+            }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 14, font: { size: 11, weight: 'bold' } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const item = sortedData[context.dataIndex];
+                  return ` ${item.Status}: ${item.audit_count} audits`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      bindChartInteractions('chartTile2', () => chart2Instance);
+    }
+
+    // Tile 3: Total Value & Count of Quotes by Status (Order: Preparing, Sent to Client, Accepted)
+    function renderTile3Chart(data) {
+      const ctx = document.getElementById('chartTile3').getContext('2d');
+      if (chart3Instance) chart3Instance.destroy();
+
+      if (!data || data.length === 0) {
+        chart3Instance = new Chart(ctx, { type: 'bar', data: { labels: ['No Data'], datasets: [{ data: [0], backgroundColor: ['#e2e8f0'] }] } });
+        return;
+      }
+
+      const targetOrder = ['Preparing', 'Sent to Client', 'Accepted'];
+      const statusColors = {
+        'Preparing': '#f59e0b',
+        'Sent to Client': '#0284c7',
+        'Accepted': '#5AE3A7'
+      };
+
+      const sortedData = targetOrder.map(st => {
+        const item = data.find(d => d.Quote_Status === st);
+        return {
+          Quote_Status: st,
+          total_value: item ? item.total_value : 0,
+          quote_count: item ? item.quote_count : 0
+        };
+      });
+
+      const labels = sortedData.map(d => {
+        const fmtVal = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(d.total_value);
+        return [d.Quote_Status, `${fmtVal} (${d.quote_count})`];
+      });
+      const values = sortedData.map(d => d.total_value);
+      const counts = sortedData.map(d => d.quote_count);
+      const bgColors = sortedData.map(d => statusColors[d.Quote_Status]);
+
+      chart3Instance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Total Value (€)',
+            data: values,
+            backgroundColor: bgColors,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, activeElements) => {
+            if (activeElements && activeElements.length > 0) {
+              handleChartClick('chartTile3', chart3Instance, activeElements[0].datasetIndex, activeElements[0].index);
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const idx = context.dataIndex;
+                  const val = values[idx];
+                  const cnt = counts[idx];
+                  const formatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(val);
+                  return ` Total: ${formatted} (${cnt} quotes)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { font: { size: 11, weight: 'bold' } }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(val) {
+                  return '€' + (val / 1000).toFixed(0) + 'k';
+                }
+              }
+            }
+          }
+        }
+      });
+
+      bindChartInteractions('chartTile3', () => chart3Instance);
+    }
+
+    // Custom Chart.js Plugin to draw counts on Tile 4 bar columns
+    const tile4DataLabelsPlugin = {
+      id: 'tile4DataLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+          const meta = chart.getDatasetMeta(datasetIndex);
+          if (!meta.hidden) {
+            meta.data.forEach((element, index) => {
+              const val = dataset.data[index];
+              if (val > 0) {
+                ctx.save();
+                ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                const x = element.x;
+                const segmentHeight = Math.abs(element.base - element.y);
+                
+                if (segmentHeight >= 14) {
+                  ctx.fillStyle = '#ffffff';
+                  const y = (element.y + element.base) / 2;
+                  ctx.fillText(val, x, y);
+                } else if (segmentHeight > 0) {
+                  ctx.fillStyle = '#1e293b';
+                  ctx.fillText(val, x, element.y - 6);
+                }
+                ctx.restore();
+              }
+            });
+          }
+        });
+      }
+    };
+
+    // Tile 4: Quotes per Certification Body (Grouped Column Chart: Accepted vs Declined)
+    function renderTile4Chart(data) {
+      const ctx = document.getElementById('chartTile4').getContext('2d');
+      if (chart4Instance) chart4Instance.destroy();
+
+      if (!data || data.length === 0) {
+        chart4Instance = new Chart(ctx, { type: 'bar', data: { labels: ['No Data'], datasets: [{ data: [0], backgroundColor: ['#e2e8f0'] }] } });
+        return;
+      }
+
+      // Unique Certification Bodies
+      const cbNames = Array.from(new Set(data.map(d => d.cb_name)));
+
+      const acceptedCounts = [];
+      const acceptedSums = [];
+      const declinedCounts = [];
+      const declinedSums = [];
+
+      cbNames.forEach(cb => {
+        const itemAcc = data.find(d => d.cb_name === cb && d.Quote_Status === 'Accepted');
+        acceptedCounts.push(itemAcc ? itemAcc.quote_count : 0);
+        acceptedSums.push(itemAcc ? itemAcc.total_quoted : 0);
+
+        const itemDec = data.find(d => d.cb_name === cb && d.Quote_Status === 'Declined');
+        declinedCounts.push(itemDec ? itemDec.quote_count : 0);
+        declinedSums.push(itemDec ? itemDec.total_quoted : 0);
+      });
+
+      chart4Instance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: cbNames,
+          datasets: [
+            {
+              label: 'Accepted',
+              data: acceptedCounts,
+              quotedSums: acceptedSums,
+              backgroundColor: '#10b981',
+              borderRadius: 4
+            },
+            {
+              label: 'Declined',
+              data: declinedCounts,
+              quotedSums: declinedSums,
+              backgroundColor: '#ef4444',
+              borderRadius: 4
+            }
+          ]
+        },
+        plugins: [tile4DataLabelsPlugin],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, activeElements) => {
+            if (activeElements && activeElements.length > 0) {
+              handleChartClick('chartTile4', chart4Instance, activeElements[0].datasetIndex, activeElements[0].index);
+            }
+          },
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 14, font: { size: 11, weight: 'bold' } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const idx = context.dataIndex;
+                  const cnt = context.raw;
+                  const sumVal = context.dataset.quotedSums ? context.dataset.quotedSums[idx] : 0;
+                  const fmtVal = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(sumVal);
+                  return ` ${context.dataset.label}: ${cnt} quotes (${fmtVal})`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                font: { size: 10 },
+                maxRotation: 45,
+                minRotation: 0,
+                callback: function(value) {
+                  const label = this.getLabelForValue(value);
+                  return label.length > 18 ? label.substring(0, 16) + '...' : label;
+                }
+              }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0 }
+            }
+          }
+        }
+      });
+
+      bindChartInteractions('chartTile4', () => chart4Instance);
+    }
+
+    // Custom Chart.js Plugin to draw counts on Tile 5 bar columns
+    const tile5DataLabelsPlugin = {
+      id: 'tile5DataLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+          const meta = chart.getDatasetMeta(datasetIndex);
+          if (!meta.hidden) {
+            meta.data.forEach((element, index) => {
+              const val = dataset.data[index];
+              if (val > 0) {
+                ctx.save();
+                ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                const x = element.x;
+                const segmentHeight = Math.abs(element.base - element.y);
+                
+                if (segmentHeight >= 14) {
+                  ctx.fillStyle = '#ffffff';
+                  const y = (element.y + element.base) / 2;
+                  ctx.fillText(val, x, y);
+                } else if (segmentHeight > 0) {
+                  ctx.fillStyle = '#1e293b';
+                  ctx.fillText(val, x, element.y - 6);
+                }
+                ctx.restore();
+              }
+            });
+          }
+        });
+      }
+    };
+
+    // Tile 5: Audits per Auditor (Grouped Column Chart: Confirmed vs Complete)
+    function renderTile5Chart(data) {
+      const ctx = document.getElementById('chartTile5').getContext('2d');
+      if (chart5Instance) chart5Instance.destroy();
+
+      if (!data || data.length === 0) {
+        chart5Instance = new Chart(ctx, { type: 'bar', data: { labels: ['No Data'], datasets: [{ data: [0], backgroundColor: ['#e2e8f0'] }] } });
+        return;
+      }
+
+      // Unique Auditors
+      const auditors = Array.from(new Set(data.map(d => d.auditor_name)));
+
+      const confirmedCounts = [];
+      const completeCounts = [];
+
+      auditors.forEach(a => {
+        const itemConf = data.find(d => d.auditor_name === a && d.Status === 'Confirmed');
+        confirmedCounts.push(itemConf ? itemConf.audit_count : 0);
+
+        const itemComp = data.find(d => d.auditor_name === a && d.Status === 'Complete');
+        completeCounts.push(itemComp ? itemComp.audit_count : 0);
+      });
+
+      chart5Instance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: auditors,
+          datasets: [
+            {
+              label: 'Confirmed',
+              data: confirmedCounts,
+              backgroundColor: '#0284c7',
+              borderRadius: 4
+            },
+            {
+              label: 'Complete',
+              data: completeCounts,
+              backgroundColor: '#10b981',
+              borderRadius: 4
+            }
+          ]
+        },
+        plugins: [tile5DataLabelsPlugin],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, activeElements) => {
+            if (activeElements && activeElements.length > 0) {
+              handleChartClick('chartTile5', chart5Instance, activeElements[0].datasetIndex, activeElements[0].index);
+            }
+          },
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 14, font: { size: 11, weight: 'bold' } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` ${context.dataset.label}: ${context.raw} audits`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                font: { size: 10 },
+                maxRotation: 45,
+                minRotation: 0,
+                callback: function(value) {
+                  const label = this.getLabelForValue(value);
+                  return label.length > 18 ? label.substring(0, 16) + '...' : label;
+                }
+              }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0 }
+            }
+          }
+        }
+      });
+
+      bindChartInteractions('chartTile5', () => chart5Instance);
+    }
+
+    // Custom Chart.js Plugin to draw counts inside Tile 6 stacked bar columns
+    const tile6DataLabelsPlugin = {
+      id: 'tile6DataLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+          const meta = chart.getDatasetMeta(datasetIndex);
+          if (!meta.hidden) {
+            meta.data.forEach((element, index) => {
+              const val = dataset.data[index];
+              if (val > 0) {
+                ctx.save();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                const x = element.x;
+                const y = (element.y + element.base) / 2;
+                const segmentHeight = Math.abs(element.base - element.y);
+                
+                if (segmentHeight >= 11) {
+                  ctx.fillText(val, x, y);
+                }
+                ctx.restore();
+              }
+            });
+          }
+        });
+      }
+    };
+
+    // Tile 6: Count of Audits per Audit Program (Vertical Stacked Column Chart by Status)
+    function renderTile6Chart(data) {
+      const ctx = document.getElementById('chartTile6').getContext('2d');
+      if (chart6Instance) chart6Instance.destroy();
+
+      if (!data || data.length === 0) {
+        chart6Instance = new Chart(ctx, { type: 'bar', data: { labels: ['No Data'], datasets: [{ data: [0], backgroundColor: ['#e2e8f0'] }] } });
+        return;
+      }
+
+      // Unique programs
+      const programs = Array.from(new Set(data.map(d => d.audit_program)));
+
+      const pendingCounts = programs.map(p => {
+        const item = data.find(d => d.audit_program === p && d.Status === 'Pending');
+        return item ? item.audit_count : 0;
+      });
+      const confirmedCounts = programs.map(p => {
+        const item = data.find(d => d.audit_program === p && d.Status === 'Confirmed');
+        return item ? item.audit_count : 0;
+      });
+      const completeCounts = programs.map(p => {
+        const item = data.find(d => d.audit_program === p && d.Status === 'Complete');
+        return item ? item.audit_count : 0;
+      });
+
+      chart6Instance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: programs,
+          datasets: [
+            { label: 'Pending', data: pendingCounts, backgroundColor: '#f59e0b', borderRadius: 4 },
+            { label: 'Confirmed', data: confirmedCounts, backgroundColor: '#0284c7', borderRadius: 4 },
+            { label: 'Complete', data: completeCounts, backgroundColor: '#5AE3A7', borderRadius: 4 }
+          ]
+        },
+        plugins: [tile6DataLabelsPlugin],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, activeElements) => {
+            if (activeElements && activeElements.length > 0) {
+              handleChartClick('chartTile6', chart6Instance, activeElements[0].datasetIndex, activeElements[0].index);
+            }
+          },
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 14, font: { size: 11, weight: 'bold' } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` ${context.dataset.label}: ${context.raw} audits`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              ticks: {
+                font: { size: 10 },
+                maxRotation: 45,
+                minRotation: 0,
+                callback: function(value) {
+                  const label = this.getLabelForValue(value);
+                  return label.length > 18 ? label.substring(0, 16) + '...' : label;
+                }
+              }
+            },
+            y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+          }
+        }
+      });
+
+      bindChartInteractions('chartTile6', () => chart6Instance);
+    }
+
+    const btnFilterDashboard = document.getElementById('btnFilterDashboard');
+    if (btnFilterDashboard) btnFilterDashboard.addEventListener('click', loadDashboardAnalytics);
+
+    const dashFromDate = document.getElementById('dashFromDate');
+    if (dashFromDate) dashFromDate.addEventListener('change', loadDashboardAnalytics);
+
+    const dashToDate = document.getElementById('dashToDate');
+    if (dashToDate) dashToDate.addEventListener('change', loadDashboardAnalytics);
+
+    const btnResetDashboardDates = document.getElementById('btnResetDashboardDates');
+    if (btnResetDashboardDates) {
+      btnResetDashboardDates.addEventListener('click', function() {
+        initDashboardDates();
+        loadDashboardAnalytics();
+      });
+    }
+
+    // --- Data Synchronization Logic ---
+    function showSyncResultModal(title, message, isSuccess = true) {
+      const modal = document.getElementById('syncResultModal');
+      const titleElem = document.getElementById('syncResultTitle');
+      const msgElem = document.getElementById('syncResultMessage');
+      const iconBox = document.getElementById('syncResultIconBox');
+      const svgSuccess = document.getElementById('syncResultSvgSuccess');
+      const svgError = document.getElementById('syncResultSvgError');
+
+      if (titleElem) titleElem.textContent = title;
+      if (msgElem) msgElem.textContent = message;
+
+      if (isSuccess) {
+        if (iconBox) {
+          iconBox.style.background = '#ecfdf5';
+          iconBox.style.color = '#059669';
+        }
+        if (svgSuccess) svgSuccess.style.display = 'block';
+        if (svgError) svgError.style.display = 'none';
+      } else {
+        if (iconBox) {
+          iconBox.style.background = '#fef2f2';
+          iconBox.style.color = '#dc2626';
+        }
+        if (svgSuccess) svgSuccess.style.display = 'none';
+        if (svgError) svgError.style.display = 'block';
+      }
+
+      if (modal) modal.classList.add('active');
+    }
+
+    const btnSyncResultOk = document.getElementById('btnSyncResultOk');
+    if (btnSyncResultOk) {
+      btnSyncResultOk.addEventListener('click', function() {
+        const modal = document.getElementById('syncResultModal');
+        if (modal) modal.classList.remove('active');
+      });
+    }
+
+    async function loadSyncStatus() {
+      const label = document.getElementById('syncLastTimeLabel');
+      if (!label) return;
+      try {
+        const res = await fetch('/api/sync-status');
+        if (res.ok) {
+          const data = await res.json();
+          label.textContent = data.last_sync_display || 'Never';
+          label.title = data.message || (data.last_sync ? `Last synced: ${data.last_sync_display}` : 'Never synced');
+        } else {
+          label.textContent = 'Unknown';
+        }
+      } catch (e) {
+        console.error('Error fetching sync status:', e);
+        label.textContent = 'Error';
+      }
+    }
+
+    const btnSyncData = document.getElementById('btnSyncData');
+    if (btnSyncData) {
+      btnSyncData.addEventListener('click', async function() {
+        if (btnSyncData.disabled) return;
+
+        const syncIcon = document.getElementById('syncIcon');
+        const syncBtnText = document.getElementById('syncBtnText');
+        const label = document.getElementById('syncLastTimeLabel');
+
+        btnSyncData.disabled = true;
+        if (syncIcon) syncIcon.classList.add('spin-anim');
+        if (syncBtnText) syncBtnText.textContent = 'Syncing...';
+        if (label) label.textContent = 'Syncing now...';
+
+        try {
+          const res = await fetch('/api/sync-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+
+          const data = await res.json();
+          if (res.ok && data.success) {
+            if (label) {
+              label.textContent = data.last_sync_display || 'Just now';
+              label.title = data.message || 'Sync successful';
+            }
+            // Refresh dashboard data & active views
+            loadDashboardAnalytics();
+            if (typeof loadDashboardStats === 'function') loadDashboardStats();
+            
+            const activeNav = document.querySelector('.nav-item.active');
+            const activeView = activeNav ? activeNav.getAttribute('data-view') : 'dashboard';
+            if (activeView === 'audits-quotes' && typeof loadWorkflows === 'function') loadWorkflows();
+            if (activeView === 'certification-bodies' && typeof loadCBs === 'function') loadCBs();
+            if (activeView === 'auditees' && typeof loadAuditees === 'function') loadAuditees();
+            if (activeView === 'auditors' && typeof loadAuditors === 'function') loadAuditors();
+
+            showSyncResultModal(
+              'Data Synchronization Complete!',
+              data.message || `Successfully synchronized ${data.total_tables} tables.`,
+              true
+            );
+          } else {
+            showSyncResultModal(
+              'Data Synchronization Failed',
+              data.message || 'Unknown error occurred.',
+              false
+            );
+            await loadSyncStatus();
+          }
+        } catch (err) {
+          console.error('Sync request error:', err);
+          showSyncResultModal(
+            'Synchronization Error',
+            'Network or server error during data sync: ' + err.message,
+            false
+          );
+          await loadSyncStatus();
+        } finally {
+          btnSyncData.disabled = false;
+          if (syncIcon) syncIcon.classList.remove('spin-anim');
+          if (syncBtnText) syncBtnText.textContent = 'Sync Data';
+        }
+      });
+    }
+
+    async function openDrilldownModal(params, title) {
+      params = params || {};
+      const fromVal = document.getElementById('dashFromDate') ? document.getElementById('dashFromDate').value : '';
+      const toVal = document.getElementById('dashToDate') ? document.getElementById('dashToDate').value : '';
+
+      if (!params.from_date && fromVal) params.from_date = fromVal;
+      if (!params.to_date && toVal) params.to_date = toVal;
+
+      const titleElem = document.getElementById('drilldownModalTitle');
+      if (titleElem) titleElem.textContent = title;
+      
+      const subElem = document.getElementById('drilldownModalSubtitle');
+      if (subElem) subElem.textContent = `Filtered by date window: ${params.from_date || 'Start'} to ${params.to_date || 'End'}`;
+
+      const sInput = document.getElementById('drilldownSearchInput');
+      if (sInput) sInput.value = '';
+
+      const tbody = document.getElementById('drilldownTableBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading data...</td></tr>';
+      
+      const modal = document.getElementById('drilldownModal');
+      if (modal) modal.classList.add('active');
+
+      try {
+        const queryParams = new URLSearchParams(params).toString();
+        const res = await fetch(`/api/dashboard-drilldown?${queryParams}`);
+        if (!res.ok) throw new Error('Failed to load drilldown details');
+        
+        drilldownRawData = await res.json();
+        applyDrilldownFilterAndSort();
+      } catch (err) {
+        console.error('Error in openDrilldownModal:', err);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: #dc2626; padding: 2rem;">Error loading drilldown data.</td></tr>';
+      }
+    }
+
+    function applyDrilldownFilterAndSort() {
+      const sInput = document.getElementById('drilldownSearchInput');
+      const searchVal = sInput ? sInput.value.toLowerCase().trim() : '';
+
+      drilldownFilteredData = drilldownRawData.filter(r => {
+        if (!searchVal) return true;
+        const haystack = [
+          r.WFID, r.Project_Nr, r.Workflow_Status, r.CB_Name,
+          r.Auditee_Name, r.Site_Location, r.Audit_Program,
+          r.Audit_Start, r.Audit_End, r.Quote_Status, r.Quote_SubTotal
+        ].map(v => (v !== null && v !== undefined) ? String(v).toLowerCase() : '').join(' ');
+        return haystack.includes(searchVal);
+      });
+
+      drilldownFilteredData.sort((a, b) => {
+        let valA = a[drilldownSortKey];
+        let valB = b[drilldownSortKey];
+
+        // Specific numerical columns
+        if (['WFID', 'Total_Mandays', 'Quote_SubTotal'].includes(drilldownSortKey)) {
+          let numA = (valA === null || valA === undefined || valA === '' || valA === '-') ? -999999999 : Number(valA);
+          let numB = (valB === null || valB === undefined || valB === '' || valB === '-') ? -999999999 : Number(valB);
+          if (isNaN(numA)) numA = -999999999;
+          if (isNaN(numB)) numB = -999999999;
+          return drilldownSortDir === 'asc' ? numA - numB : numB - numA;
+        }
+
+        // Specific date columns
+        if (['Audit_Start', 'Audit_End'].includes(drilldownSortKey)) {
+          let strA = (valA && valA !== '-') ? String(valA) : '';
+          let strB = (valB && valB !== '-') ? String(valB) : '';
+          if (strA < strB) return drilldownSortDir === 'asc' ? -1 : 1;
+          if (strA > strB) return drilldownSortDir === 'asc' ? 1 : -1;
+          return 0;
+        }
+
+        // Standard text columns
+        if (valA === null || valA === undefined) valA = '';
+        if (valB === null || valB === undefined) valB = '';
+
+        const strA = String(valA).trim().toLowerCase();
+        const strB = String(valB).trim().toLowerCase();
+
+        if (strA < strB) return drilldownSortDir === 'asc' ? -1 : 1;
+        if (strA > strB) return drilldownSortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      renderDrilldownTable();
+    }
+
+    function exportDrilldownToExcel() {
+      if (!drilldownFilteredData || drilldownFilteredData.length === 0) {
+        showSyncResultModal('Export', 'No records available to export.', false);
+        return;
+      }
+
+      if (typeof XLSX === 'undefined') {
+        showSyncResultModal('Export Error', 'Excel library is loading, please try again.', false);
+        return;
+      }
+
+      const rows = drilldownFilteredData.map(r => ({
+        "WFID": r.WFID || '',
+        "Project Nr": r.Project_Nr || '',
+        "Audit Status": r.Workflow_Status || '',
+        "Certification Body": r.CB_Name || '',
+        "Auditee": r.Auditee_Name || '',
+        "Site Location": r.Site_Location || '',
+        "Audit Program": r.Audit_Program || '',
+        "Start Date": r.Audit_Start || '',
+        "End Date": r.Audit_End || '',
+        "Mandays": (r.Total_Mandays !== null && r.Total_Mandays !== undefined) ? r.Total_Mandays : '',
+        "Quote Status": r.Quote_Status || '',
+        "Quoted SubTotal (€)": (r.Quote_SubTotal !== null && r.Quote_SubTotal !== undefined) ? r.Quote_SubTotal : ''
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+
+      // Set clean column widths
+      worksheet['!cols'] = [
+        { wch: 10 }, // WFID
+        { wch: 14 }, // Project Nr
+        { wch: 16 }, // Audit Status
+        { wch: 28 }, // Certification Body
+        { wch: 24 }, // Auditee
+        { wch: 32 }, // Site Location
+        { wch: 18 }, // Audit Program
+        { wch: 13 }, // Start Date
+        { wch: 13 }, // End Date
+        { wch: 10 }, // Mandays
+        { wch: 14 }, // Quote Status
+        { wch: 18 }  // Quoted SubTotal
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Drilldown Data");
+
+      const rawTitle = document.getElementById('drilldownModalTitle')?.textContent || 'Audit_Workflows';
+      const cleanTitle = rawTitle.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `${cleanTitle || 'Approven_Data'}_${dateStr}.xlsx`;
+
+      XLSX.writeFile(workbook, filename);
+    }
+
+    const btnExportDrilldownXLSX = document.getElementById('btnExportDrilldownXLSX');
+    if (btnExportDrilldownXLSX) {
+      btnExportDrilldownXLSX.addEventListener('click', exportDrilldownToExcel);
+    }
+
+    function renderDrilldownTable() {
+      const tbody = document.getElementById('drilldownTableBody');
+      if (!tbody) return;
+
+      const totalSum = drilldownFilteredData.reduce((sum, r) => sum + (r.Quote_SubTotal || 0), 0);
+      const fmtSum = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(totalSum);
+      
+      const badge = document.getElementById('drilldownBadge');
+      if (badge) badge.innerHTML = `Showing <strong>${drilldownFilteredData.length}</strong> records (Total Quoted: <strong>${fmtSum}</strong>)`;
+
+      if (drilldownFilteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">No matching records found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = drilldownFilteredData.map(r => {
+        const wfStatusClass = (r.Workflow_Status || '').toLowerCase() === 'complete' ? 'active' : ((r.Workflow_Status || '').toLowerCase() === 'pending' ? 'inactive' : 'active');
+        const fmtSubTotal = r.Quote_SubTotal !== null && r.Quote_SubTotal !== undefined ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(r.Quote_SubTotal) : '-';
+
+        return `
+          <tr>
+            <td class="drilldown-col-wfid"><strong>#${r.WFID}</strong> ${r.Project_Nr ? `<br><small style="color:#64748b;">${escapeHtml(r.Project_Nr)}</small>` : ''}</td>
+            <td class="drilldown-col-status"><span class="status-badge ${wfStatusClass}">${escapeHtml(r.Workflow_Status || 'Active')}</span></td>
+            <td class="drilldown-col-cb"><strong>${escapeHtml(r.CB_Name)}</strong></td>
+            <td class="drilldown-col-auditee">${escapeHtml(r.Auditee_Name)}</td>
+            <td class="drilldown-col-site" style="font-size: 0.85rem;">${escapeHtml(r.Site_Location)}</td>
+            <td class="drilldown-col-program">${escapeHtml(r.Audit_Program)}</td>
+            <td class="drilldown-col-date">${r.Audit_Start || '-'}</td>
+            <td class="drilldown-col-date">${r.Audit_End || '-'}</td>
+            <td class="drilldown-col-mandays">${r.Total_Mandays !== null ? r.Total_Mandays : '-'}</td>
+            <td class="drilldown-col-quote-status"><span class="status-badge active" style="background:#e0f2fe; color:#0369a1;">${escapeHtml(r.Quote_Status || '-')}</span></td>
+            <td class="drilldown-col-quote-total" style="font-weight: 600;">${fmtSubTotal}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.querySelectorAll('#drilldownModal .sortable-th').forEach(th => {
+        const key = th.getAttribute('data-sort-key');
+        const iconSpan = th.querySelector('.sort-icon');
+        if (key === drilldownSortKey) {
+          th.classList.add('active-sort');
+          if (iconSpan) iconSpan.textContent = drilldownSortDir === 'asc' ? '▲' : '▼';
+        } else {
+          th.classList.remove('active-sort');
+          if (iconSpan) iconSpan.textContent = '↕';
+        }
+      });
+    }
+
+    function closeDrilldownModal() {
+      const modal = document.getElementById('drilldownModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    const btnCloseDrilldownModal = document.getElementById('btnCloseDrilldownModal');
+    if (btnCloseDrilldownModal) btnCloseDrilldownModal.addEventListener('click', closeDrilldownModal);
+
+    const btnCloseDrilldownModalFooter = document.getElementById('btnCloseDrilldownModalFooter');
+    if (btnCloseDrilldownModalFooter) btnCloseDrilldownModalFooter.addEventListener('click', closeDrilldownModal);
+
+    const drilldownModal = document.getElementById('drilldownModal');
+    if (drilldownModal) {
+      drilldownModal.addEventListener('click', function(e) {
+        if (e.target === this) closeDrilldownModal();
+      });
+    }
+
+    const drilldownSearchInput = document.getElementById('drilldownSearchInput');
+    if (drilldownSearchInput) drilldownSearchInput.addEventListener('input', applyDrilldownFilterAndSort);
+
+    document.querySelectorAll('#drilldownModal .sortable-th').forEach(th => {
+      th.addEventListener('click', function() {
+        const key = this.getAttribute('data-sort-key');
+        if (drilldownSortKey === key) {
+          drilldownSortDir = drilldownSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          drilldownSortKey = key;
+          drilldownSortDir = 'asc';
+        }
+        applyDrilldownFilterAndSort();
+      });
+    });
+
+    // --- Auditors Module JS ---
+    let auditorRawData = [];
+    let auditorSortKey = 'First_Name';
+    let auditorSortDir = 'asc';
+    let currentAuditorID = null;
+    let auditorCBsOnboardedState = [];
+    let auditorProgramsState = [];
+    let allCBsList = [];
+    let allAuditProgramsList = [];
+
+    async function fetchAuditorsMasterLists() {
+      try {
+        if (allCBsList.length === 0) {
+          const resCB = await fetch('/api/certification-bodies');
+          if (resCB.ok) allCBsList = await resCB.json();
+        }
+        if (allAuditProgramsList.length === 0) {
+          const resProg = await fetch('/api/audit-programs');
+          if (resProg.ok) allAuditProgramsList = await resProg.json();
+        }
+      } catch (err) {
+        console.error('Error fetching auditor master lists:', err);
+      }
+    }
+
+    async function loadAuditorsList() {
+      const tbody = document.getElementById('auditorsTableBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading auditors directory...</td></tr>';
+
+      try {
+        const response = await fetch('/api/auditors');
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        if (!response.ok) throw new Error('Failed to fetch auditors');
+        auditorRawData = await response.json();
+        applyAuditorsFilterAndSort();
+      } catch (err) {
+        console.error('Error loading auditors:', err);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: #dc2626; padding: 2rem;">Error loading auditors.</td></tr>';
+      }
+    }
+
+    function applyAuditorsFilterAndSort() {
+      const searchVal = document.getElementById('auditorSearchInput') ? document.getElementById('auditorSearchInput').value.toLowerCase().trim() : '';
+      const showInactive = document.getElementById('auditorShowInactiveToggle') ? document.getElementById('auditorShowInactiveToggle').checked : false;
+
+      let filtered = auditorRawData.filter(item => {
+        if (!showInactive && (item.Status || '').toLowerCase() === 'inactive') return false;
+        if (!searchVal) return true;
+        const haystack = [
+          String(item.AuditorID || ''),
+          item.First_Name, item.Last_Name, item.Email, item.Mobile_Nr,
+          item.APSCA_Nr, item.Employment_Type, item.Residence_City, item.Residence_Country
+        ].map(v => (v || '').toLowerCase()).join(' ');
+        return haystack.includes(searchVal);
+      });
+
+      filtered.sort((a, b) => {
+        let valA = a[auditorSortKey] || '';
+        let valB = b[auditorSortKey] || '';
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        if (valA < valB) return auditorSortDir === 'asc' ? -1 : 1;
+        if (valA > valB) return auditorSortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      renderAuditorsTable(filtered);
+    }
+
+    function renderAuditorsTable(data) {
+      const tbody = document.getElementById('auditorsTableBody');
+      if (!tbody) return;
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">No matching auditors found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.map(item => {
+        const isInactive = (item.Status || '').toLowerCase() === 'inactive';
+        const statusBadge = isInactive ? '<span class="status-badge inactive">Inactive</span>' : '<span class="status-badge active">Active</span>';
+        const leadBadge = item.Lead_Auditor ? '<span style="color:#0d8a57; font-weight:bold;">✓ Yes</span>' : '<span style="color:#94a3b8;">No</span>';
+        const name = `${escapeHtml(item.First_Name || '')} ${escapeHtml(item.Last_Name || '')}`.trim();
+
+        return `
+          <tr>
+            <td><strong>#${item.AuditorID}</strong></td>
+            <td><strong>${name}</strong></td>
+            <td>${escapeHtml(item.Gender || '-')}</td>
+            <td>${escapeHtml(item.Email || '-')}</td>
+            <td>${escapeHtml(item.Mobile_Nr || '-')}</td>
+            <td>${leadBadge}</td>
+            <td>${escapeHtml(item.APSCA_Nr || '-')}</td>
+            <td>${escapeHtml(item.Employment_Type || '-')}</td>
+            <td>${escapeHtml(item.Residence_City || '-')}</td>
+            <td>${escapeHtml(item.Residence_Country || '-')}</td>
+            <td>${statusBadge}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function openAuditorModal(auditorId = null) {
+      currentAuditorID = auditorId;
+      await fetchAuditorsMasterLists();
+
+      const form = document.getElementById('auditorForm');
+      if (form) form.reset();
+
+      const title = document.getElementById('auditorModalTitle');
+      if (title) title.textContent = auditorId ? `Auditor Profile: #${auditorId}` : 'Create New Auditor';
+
+      if (!auditorId) {
+        document.getElementById('auditor_AuditorID_hidden').value = '';
+        document.getElementById('auditor_AuditorID').value = 'Auto';
+        document.getElementById('auditor_Status').value = 'Active';
+        document.getElementById('auditor_Lead_Auditor').checked = false;
+        auditorCBsOnboardedState = [];
+        auditorProgramsState = [];
+        renderAuditorCBSubform();
+        populateAuditorCBFilterDropdown();
+        renderAuditorProgSubform();
+      } else {
+        try {
+          const res = await fetch(`/api/auditors/${auditorId}`);
+          if (!res.ok) throw new Error('Failed to load auditor details');
+          const data = await res.json();
+
+          document.getElementById('auditor_AuditorID_hidden').value = data.AuditorID;
+          document.getElementById('auditor_AuditorID').value = data.AuditorID;
+          document.getElementById('auditor_Status').value = data.Status || 'Active';
+          document.getElementById('auditor_First_Name').value = data.First_Name || '';
+          document.getElementById('auditor_Last_Name').value = data.Last_Name || '';
+          document.getElementById('auditor_Gender').value = data.Gender || '';
+          document.getElementById('auditor_Email').value = data.Email || '';
+          document.getElementById('auditor_Mobile_Nr').value = data.Mobile_Nr || '';
+          document.getElementById('auditor_Lead_Auditor').checked = !!data.Lead_Auditor;
+          document.getElementById('auditor_APSCA_Nr').value = data.APSCA_Nr || '';
+          document.getElementById('auditor_Employment_Type').value = data.Employment_Type || '';
+          document.getElementById('auditor_Nationality').value = data.Nationality || '';
+          document.getElementById('auditor_Residence_City').value = data.Residence_City || '';
+          document.getElementById('auditor_Residence_Country').value = data.Residence_Country || '';
+          document.getElementById('auditor_Residence_Address').value = data.Residence_Address || '';
+
+          auditorCBsOnboardedState = data.cbs_onboarded || [];
+          auditorProgramsState = data.auditor_programs || [];
+
+          renderAuditorCBSubform();
+          populateAuditorCBFilterDropdown();
+          renderAuditorProgSubform();
+        } catch (err) {
+          console.error('Error loading auditor profile:', err);
+          alert('Error loading auditor profile.');
+          return;
+        }
+      }
+
+      switchAuditorTab('auditor-tab-cb-onboarding');
+
+      const modal = document.getElementById('auditorModal');
+      if (modal) modal.classList.add('active');
+    }
+
+    function closeAuditorModal() {
+      const modal = document.getElementById('auditorModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function switchAuditorTab(tabId) {
+      document.querySelectorAll('#auditorModal .tab-btn').forEach(btn => {
+        if (btn.getAttribute('data-tab') === tabId) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+      document.querySelectorAll('#auditorModal .auditor-tab-content').forEach(content => {
+        if (content.id === tabId) content.style.display = 'block';
+        else content.style.display = 'none';
+      });
+    }
+
+    function renderAuditorCBSubform() {
+      const tbody = document.getElementById('auditorCBSubformBody');
+      if (!tbody) return;
+
+      if (auditorCBsOnboardedState.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No CB onboardings recorded. Click "+ Add Certification Body" to add one.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = auditorCBsOnboardedState.map((item, idx) => `
+        <tr>
+          <td>
+            <select class="select-input cb-select" data-idx="${idx}">
+              ${allCBsList.map(cb => `<option value="${cb.ID}" ${cb.ID === item.CB ? 'selected' : ''}>${escapeHtml(cb.Company_Name)}</option>`).join('')}
+            </select>
+          </td>
+          <td>
+            <select class="select-input status-select" data-idx="${idx}">
+              <option value="Onboarded" ${item.Status === 'Onboarded' ? 'selected' : ''}>Onboarded</option>
+              <option value="Not Onboarded" ${item.Status === 'Not Onboarded' ? 'selected' : ''}>Not Onboarded</option>
+            </select>
+          </td>
+          <td style="text-align: center;">
+            <button type="button" class="btn-danger remove-cb-btn" data-idx="${idx}" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">✕</button>
+          </td>
+        </tr>
+      `).join('');
+
+      tbody.querySelectorAll('.cb-select').forEach(sel => {
+        sel.addEventListener('change', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorCBsOnboardedState[idx].CB = parseInt(this.value);
+        });
+      });
+
+      tbody.querySelectorAll('.status-select').forEach(sel => {
+        sel.addEventListener('change', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorCBsOnboardedState[idx].Status = this.value;
+        });
+      });
+
+      tbody.querySelectorAll('.remove-cb-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorCBsOnboardedState.splice(idx, 1);
+          renderAuditorCBSubform();
+          populateAuditorCBFilterDropdown();
+        });
+      });
+    }
+
+    function populateAuditorCBFilterDropdown() {
+      const sel = document.getElementById('auditorProgCBFilter');
+      if (!sel) return;
+
+      const currentVal = sel.value;
+      const uniqueCBIDs = Array.from(new Set(auditorProgramsState.map(p => p.CertificationBody)));
+      
+      let html = '<option value="ALL">All Certification Bodies</option>';
+      uniqueCBIDs.forEach(cbId => {
+        const cbObj = allCBsList.find(c => c.ID === cbId);
+        const name = cbObj ? cbObj.Company_Name : `CB #${cbId}`;
+        html += `<option value="${cbId}">${escapeHtml(name)}</option>`;
+      });
+
+      sel.innerHTML = html;
+      if (Array.from(sel.options).some(o => o.value === currentVal)) {
+        sel.value = currentVal;
+      } else {
+        sel.value = 'ALL';
+      }
+    }
+
+    function renderAuditorProgSubform() {
+      const tbody = document.getElementById('auditorProgSubformBody');
+      if (!tbody) return;
+
+      const filterCB = document.getElementById('auditorProgCBFilter') ? document.getElementById('auditorProgCBFilter').value : 'ALL';
+
+      const filtered = auditorProgramsState.filter(item => {
+        if (filterCB === 'ALL') return true;
+        return String(item.CertificationBody) === String(filterCB);
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No program accreditations recorded for this selection.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((item) => {
+        const realIdx = auditorProgramsState.indexOf(item);
+        const cbSelectHtml = allCBsList.map(cb => `<option value="${cb.ID}" ${cb.ID === item.CertificationBody ? 'selected' : ''}>${escapeHtml(cb.Company_Name)}</option>`).join('');
+        const progSelectHtml = allAuditProgramsList.map(p => `<option value="${escapeHtml(p)}" ${p === item.Program ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('');
+
+        return `
+          <tr>
+            <td>
+              <select class="select-input prog-cb-select" data-idx="${realIdx}" style="width: 100%;">
+                ${cbSelectHtml}
+              </select>
+            </td>
+            <td>
+              <select class="select-input prog-name-select" data-idx="${realIdx}" style="width: 100%;">
+                ${progSelectHtml}
+              </select>
+            </td>
+            <td>
+              <select class="select-input prog-status-select" data-idx="${realIdx}" style="width: 100%;">
+                <option value="Compliant" ${item.Status === 'Compliant' ? 'selected' : ''}>Compliant</option>
+                <option value="Not Compliant" ${item.Status === 'Not Compliant' ? 'selected' : ''}>Not Compliant</option>
+                <option value="Pending" ${item.Status === 'Pending' ? 'selected' : ''}>Pending</option>
+              </select>
+            </td>
+            <td style="text-align: center;">
+              <input type="checkbox" class="prog-req-check" data-idx="${realIdx}" ${item.Accred_Cert_Training_Req ? 'checked' : ''}>
+            </td>
+            <td>
+              <input type="date" class="form-input prog-expiry-date" data-idx="${realIdx}" value="${item.Accred_Expiry || ''}" style="padding: 0.25rem 0.4rem; font-size: 0.8rem;">
+            </td>
+            <td>
+              <input type="date" class="form-input prog-complete-date" data-idx="${realIdx}" value="${item.Accred_LastComplete || ''}" style="padding: 0.25rem 0.4rem; font-size: 0.8rem;">
+            </td>
+            <td style="text-align: center;">
+              <input type="checkbox" class="prog-evidence-check" data-idx="${realIdx}" ${item.Evidence_Uploaded ? 'checked' : ''}>
+            </td>
+            <td>
+              <input type="text" class="form-input prog-evidence-path" data-idx="${realIdx}" value="${escapeHtml(item.Evidence_Path || '')}" placeholder="File path..." style="padding: 0.25rem 0.4rem; font-size: 0.8rem;">
+            </td>
+            <td style="text-align: center;">
+              <button type="button" class="btn-danger remove-prog-btn" data-idx="${realIdx}" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">✕</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.querySelectorAll('.prog-cb-select').forEach(sel => {
+        sel.addEventListener('change', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorProgramsState[idx].CertificationBody = parseInt(this.value);
+          populateAuditorCBFilterDropdown();
+        });
+      });
+
+      tbody.querySelectorAll('.prog-name-select').forEach(sel => {
+        sel.addEventListener('change', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorProgramsState[idx].Program = this.value;
+        });
+      });
+
+      tbody.querySelectorAll('.prog-status-select').forEach(sel => {
+        sel.addEventListener('change', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorProgramsState[idx].Status = this.value;
+        });
+      });
+
+      tbody.querySelectorAll('.prog-req-check').forEach(chk => {
+        chk.addEventListener('change', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorProgramsState[idx].Accred_Cert_Training_Req = this.checked;
+        });
+      });
+
+      tbody.querySelectorAll('.prog-expiry-date').forEach(inp => {
+        inp.addEventListener('change', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorProgramsState[idx].Accred_Expiry = this.value;
+        });
+      });
+
+      tbody.querySelectorAll('.prog-complete-date').forEach(inp => {
+        inp.addEventListener('change', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorProgramsState[idx].Accred_LastComplete = this.value;
+        });
+      });
+
+      tbody.querySelectorAll('.prog-evidence-check').forEach(chk => {
+        chk.addEventListener('change', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorProgramsState[idx].Evidence_Uploaded = this.checked;
+        });
+      });
+
+      tbody.querySelectorAll('.prog-evidence-path').forEach(inp => {
+        inp.addEventListener('change', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorProgramsState[idx].Evidence_Path = this.value;
+        });
+      });
+
+      tbody.querySelectorAll('.remove-prog-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const idx = parseInt(this.getAttribute('data-idx'));
+          auditorProgramsState.splice(idx, 1);
+          renderAuditorProgSubform();
+          populateAuditorCBFilterDropdown();
+        });
+      });
+    }
+
+    async function saveAuditorProfile() {
+      const firstName = document.getElementById('auditor_First_Name').value.trim();
+      const lastName = document.getElementById('auditor_Last_Name').value.trim();
+      if (!firstName || !lastName) {
+        alert('First Name and Last Name are required.');
+        return;
+      }
+
+      const payload = {
+        Status: document.getElementById('auditor_Status').value,
+        First_Name: firstName,
+        Last_Name: lastName,
+        Gender: document.getElementById('auditor_Gender').value,
+        Email: document.getElementById('auditor_Email').value.trim(),
+        Mobile_Nr: document.getElementById('auditor_Mobile_Nr').value.trim(),
+        Lead_Auditor: document.getElementById('auditor_Lead_Auditor').checked,
+        APSCA_Nr: document.getElementById('auditor_APSCA_Nr').value.trim(),
+        Employment_Type: document.getElementById('auditor_Employment_Type').value,
+        Nationality: document.getElementById('auditor_Nationality').value,
+        Residence_City: document.getElementById('auditor_Residence_City').value.trim(),
+        Residence_Country: document.getElementById('auditor_Residence_Country').value,
+        Residence_Address: document.getElementById('auditor_Residence_Address').value.trim(),
+        cbs_onboarded: auditorCBsOnboardedState,
+        auditor_programs: auditorProgramsState
+      };
+
+      const auditorId = document.getElementById('auditor_AuditorID_hidden').value;
+
+      try {
+        let res;
+        if (auditorId) {
+          res = await fetch(`/api/auditors/${auditorId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          res = await fetch('/api/auditors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        if (!res.ok) throw new Error('Failed to save auditor profile');
+
+        closeAuditorModal();
+        loadAuditorsList();
+      } catch (err) {
+        console.error('Error saving auditor:', err);
+        alert('Error saving auditor profile.');
+      }
+    }
+
+    async function seedMissingAuditorPrograms() {
+      if (!currentAuditorID) {
+        alert('Please save the auditor profile first before seeding programs.');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/auditors/${currentAuditorID}/seed-programs`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to seed missing audit programs');
+        const data = await res.json();
+        alert(`Successfully added ${data.added_count} missing program qualifications!`);
+        openAuditorModal(currentAuditorID);
+      } catch (err) {
+        console.error('Error seeding programs:', err);
+        alert('Error seeding missing audit programs.');
+      }
+    }
+
+    const btnSaveAuditor = document.getElementById('btnSaveAuditor');
+    if (btnSaveAuditor) btnSaveAuditor.addEventListener('click', saveAuditorProfile);
+
+    const btnCancelAuditor = document.getElementById('btnCancelAuditor');
+    if (btnCancelAuditor) btnCancelAuditor.addEventListener('click', closeAuditorModal);
+
+    const btnAddAuditorCBRow = document.getElementById('btnAddAuditorCBRow');
+    if (btnAddAuditorCBRow) {
+      btnAddAuditorCBRow.addEventListener('click', function() {
+        const defaultCB = allCBsList[0] ? allCBsList[0].ID : 1;
+        auditorCBsOnboardedState.push({ CB: defaultCB, Status: 'Onboarded' });
+        renderAuditorCBSubform();
+        populateAuditorCBFilterDropdown();
+      });
+    }
+
+    const btnAddAuditorProgRow = document.getElementById('btnAddAuditorProgRow');
+    if (btnAddAuditorProgRow) {
+      btnAddAuditorProgRow.addEventListener('click', function() {
+        const defaultCB = allCBsList[0] ? allCBsList[0].ID : 1;
+        const defaultProg = allAuditProgramsList[0] || 'SMETA 4 Pillar';
+        auditorProgramsState.push({
+          CertificationBody: defaultCB,
+          Program: defaultProg,
+          Status: 'Compliant',
+          Accred_Cert_Training_Req: false,
+          Evidence_Uploaded: false
+        });
+        renderAuditorProgSubform();
+        populateAuditorCBFilterDropdown();
+      });
+    }
+
+    const btnSeedAuditorPrograms = document.getElementById('btnSeedAuditorPrograms');
+    if (btnSeedAuditorPrograms) btnSeedAuditorPrograms.addEventListener('click', seedMissingAuditorPrograms);
+
+    const auditorProgCBFilter = document.getElementById('auditorProgCBFilter');
+    if (auditorProgCBFilter) auditorProgCBFilter.addEventListener('change', renderAuditorProgSubform);
+
+    const auditorSearchInput = document.getElementById('auditorSearchInput');
+    if (auditorSearchInput) auditorSearchInput.addEventListener('input', applyAuditorsFilterAndSort);
+
+    document.querySelectorAll('#auditorModal .tab-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const tabId = this.getAttribute('data-tab');
+        switchAuditorTab(tabId);
+      });
+    });
+
+    // --- Audits & Quotes Module JS ---
+    let auditsRawData = [];
+    let auditsFilteredData = [];
+    let auditSortKey = 'WFID';
+    let auditSortDir = 'desc';
+
+    async function loadAuditsList() {
+      const tbody = document.getElementById('auditsListTableBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="15" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Loading audit workflows...</td></tr>';
+
+      const showAllToggle = document.getElementById('auditShowAllToggle');
+      const showAll = showAllToggle ? showAllToggle.checked : false;
+      const statusFilter = showAll ? 'all' : 'active';
+
+      try {
+        const url = `/api/audits-list?status_filter=${statusFilter}`;
+        const response = await fetch(url);
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        if (!response.ok) throw new Error('Failed to load audits');
+        auditsRawData = await response.json();
+        applyAuditsFilterAndSort();
+      } catch (err) {
+        console.error('Error loading audits:', err);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="15" style="text-align: center; color: #dc2626; padding: 2.5rem;">Error loading audit workflows.</td></tr>';
+      }
+    }
+
+    function applyAuditsFilterAndSort() {
+      const searchVal = document.getElementById('auditSearchInput') ? document.getElementById('auditSearchInput').value.toLowerCase().trim() : '';
+
+      auditsFilteredData = auditsRawData.filter(item => {
+        if (!searchVal) return true;
+        const haystack = [
+          String(item.WFID || ''),
+          item.Project_Nr,
+          item.Workflow_Status,
+          item.Quote_Status,
+          item.CB_Name,
+          item.Auditee_Name,
+          item.Site_Location,
+          item.Audit_Program,
+          item.Audit_Type,
+          item.Announcement,
+          item.Auditor_Names,
+          item.Inv_Number
+        ].map(v => (v || '').toLowerCase()).join(' ');
+        return haystack.includes(searchVal);
+      });
+
+      auditsFilteredData.sort((a, b) => {
+        let valA = a[auditSortKey];
+        let valB = b[auditSortKey];
+
+        if (auditSortKey === 'WFID' || auditSortKey === 'Total_Mandays' || auditSortKey === 'Quote_SubTotal') {
+          valA = (valA !== null && valA !== undefined) ? Number(valA) : -999999;
+          valB = (valB !== null && valB !== undefined) ? Number(valB) : -999999;
+        } else if (auditSortKey === 'Invoiced') {
+          valA = a.Invoiced ? 1 : 0;
+          valB = b.Invoiced ? 1 : 0;
+        } else {
+          valA = (valA || '').toString().toLowerCase();
+          valB = (valB || '').toString().toLowerCase();
+        }
+
+        if (valA < valB) return auditSortDir === 'asc' ? -1 : 1;
+        if (valA > valB) return auditSortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      renderAuditsListTable();
+    }
+
+    function renderAuditsListTable() {
+      const tbody = document.getElementById('auditsListTableBody');
+      if (!tbody) return;
+
+      const totalQuoted = auditsFilteredData.reduce((sum, r) => sum + (Number(r.Quote_SubTotal) || 0), 0);
+      const fmtQuoted = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(totalQuoted);
+
+      const badge = document.getElementById('auditsBadgeCounter');
+      if (badge) {
+        badge.innerHTML = `Showing <strong>${auditsFilteredData.length}</strong> audits (Total Quoted: <strong>${fmtQuoted}</strong>)`;
+      }
+
+      if (auditsFilteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="15" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No matching audit workflows found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = auditsFilteredData.map(r => {
+        const wfStatus = (r.Workflow_Status || '').toLowerCase();
+        let statusBadgeClass = 'pending';
+        if (wfStatus === 'confirmed') statusBadgeClass = 'confirmed';
+        else if (wfStatus === 'complete') statusBadgeClass = 'complete';
+        else if (wfStatus === 'cancelled') statusBadgeClass = 'cancelled';
+
+        const qStatus = (r.Quote_Status || '').toLowerCase();
+        let qBadgeClass = 'active';
+        if (qStatus === 'accepted') qBadgeClass = 'complete';
+        else if (qStatus === 'declined') qBadgeClass = 'declined';
+        else if (qStatus === 'preparing') qBadgeClass = 'preparing';
+        else if (qStatus === 'authorised') qBadgeClass = 'authorised';
+        else if (qStatus === 'sent to client') qBadgeClass = 'confirmed';
+
+        const fmtSubTotal = (r.Quote_SubTotal !== null && r.Quote_SubTotal !== undefined) 
+          ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(r.Quote_SubTotal) 
+          : '-';
+
+        const invoicedBadge = r.Invoiced 
+          ? `<span class="status-badge complete" title="${escapeHtml(r.Inv_Number || '')}">✓ Yes${r.Inv_Number ? ` (${escapeHtml(r.Inv_Number)})` : ''}</span>`
+          : `<span class="status-badge inactive">No</span>`;
+
+        return `
+          <tr>
+            <td><strong>#${r.WFID}</strong> ${r.Project_Nr ? `<br><small style="color:#64748b;">${escapeHtml(r.Project_Nr)}</small>` : ''}</td>
+            <td><span class="status-badge ${statusBadgeClass}">${escapeHtml(r.Workflow_Status || 'Active')}</span></td>
+            <td><span class="status-badge ${qBadgeClass}">${escapeHtml(r.Quote_Status || '-')}</span></td>
+            <td><strong>${escapeHtml(r.CB_Name || 'Unassigned')}</strong></td>
+            <td>${escapeHtml(r.Auditee_Name || '-')}</td>
+            <td style="min-width: 220px; font-size: 0.85rem; word-break: break-word;">${escapeHtml(r.Site_Location || '-')}</td>
+            <td>${escapeHtml(r.Audit_Program || '-')}</td>
+            <td><small style="color:#475569;">${escapeHtml(r.Audit_Type || '-')}</small></td>
+            <td><small style="color:#475569;">${escapeHtml(r.Announcement || '-')}</small></td>
+            <td style="white-space: nowrap;">${r.Audit_Start || '-'}</td>
+            <td style="white-space: nowrap;">${r.Audit_End || '-'}</td>
+            <td style="font-size: 0.85rem;">${escapeHtml(r.Auditor_Names || '-')}</td>
+            <td style="text-align: center;">${(r.Total_Mandays !== null && r.Total_Mandays !== undefined) ? r.Total_Mandays : '-'}</td>
+            <td style="text-align: right; font-weight: 600;">${fmtSubTotal}</td>
+            <td style="white-space: nowrap;">${invoicedBadge}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.sortable-th-audit').forEach(th => {
+        const key = th.getAttribute('data-sort-key');
+        const iconSpan = th.querySelector('.sort-icon');
+        if (key === auditSortKey) {
+          th.classList.add('active-sort');
+          if (iconSpan) iconSpan.textContent = auditSortDir === 'asc' ? '▲' : '▼';
+        } else {
+          th.classList.remove('active-sort');
+          if (iconSpan) iconSpan.textContent = '↕';
+        }
+      });
+    }
+
+    function exportAuditsListToExcel() {
+      if (!auditsFilteredData || auditsFilteredData.length === 0) {
+        showSyncResultModal('Export', 'No audit records available to export.', false);
+        return;
+      }
+
+      if (typeof XLSX === 'undefined') {
+        showSyncResultModal('Export Error', 'Excel library is loading, please try again.', false);
+        return;
+      }
+
+      const rows = auditsFilteredData.map(r => ({
+        "WFID": r.WFID || '',
+        "Project Nr": r.Project_Nr || '',
+        "Workflow Status": r.Workflow_Status || '',
+        "Quote Status": r.Quote_Status || '',
+        "Certification Body": r.CB_Name || '',
+        "Auditee": r.Auditee_Name || '',
+        "Site / Country": r.Site_Location || '',
+        "Audit Program": r.Audit_Program || '',
+        "Audit Type": r.Audit_Type || '',
+        "Announcement": r.Announcement || '',
+        "Start Date": r.Audit_Start || '',
+        "End Date": r.Audit_End || '',
+        "Auditors": r.Auditor_Names || '',
+        "Mandays": (r.Total_Mandays !== null && r.Total_Mandays !== undefined) ? r.Total_Mandays : '',
+        "Quoted Total (€)": (r.Quote_SubTotal !== null && r.Quote_SubTotal !== undefined) ? r.Quote_SubTotal : '',
+        "Invoiced": r.Invoiced ? 'Yes' : 'No',
+        "Invoice Nr": r.Inv_Number || '',
+        "Invoice Amount (€)": (r.Inv_Amount !== null && r.Inv_Amount !== undefined) ? r.Inv_Amount : ''
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+
+      worksheet['!cols'] = [
+        { wch: 10 },
+        { wch: 14 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 28 },
+        { wch: 24 },
+        { wch: 28 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 13 },
+        { wch: 13 },
+        { wch: 26 },
+        { wch: 10 },
+        { wch: 16 },
+        { wch: 10 },
+        { wch: 14 },
+        { wch: 16 }
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Audits & Quotes");
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `Approven_Audits_Quotes_${dateStr}.xlsx`;
+
+      XLSX.writeFile(workbook, filename);
+    }
+
+    const auditSearchInput = document.getElementById('auditSearchInput');
+    if (auditSearchInput) {
+      let auditDebounceTimer;
+      auditSearchInput.addEventListener('input', function() {
+        clearTimeout(auditDebounceTimer);
+        auditDebounceTimer = setTimeout(applyAuditsFilterAndSort, 200);
+      });
+    }
+
+    const auditShowAllToggle = document.getElementById('auditShowAllToggle');
+    if (auditShowAllToggle) {
+      auditShowAllToggle.addEventListener('change', loadAuditsList);
+    }
+
+    const btnExportAuditsXLSX = document.getElementById('btnExportAuditsXLSX');
+    if (btnExportAuditsXLSX) {
+      btnExportAuditsXLSX.addEventListener('click', exportAuditsListToExcel);
+    }
+
+    document.querySelectorAll('.sortable-th-audit').forEach(th => {
+      th.addEventListener('click', function() {
+        const key = this.getAttribute('data-sort-key');
+        if (auditSortKey === key) {
+          auditSortDir = auditSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          auditSortKey = key;
+          auditSortDir = 'asc';
+        }
+        applyAuditsFilterAndSort();
+      });
+    });
+
+    // Sidebar Show/Hide & Mobile Drawer Handler
+    const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+    const appSidebar = document.getElementById('appSidebar');
+    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+    const sidebarToggleIconHide = document.getElementById('sidebarToggleIconHide');
+    const sidebarToggleIconShow = document.getElementById('sidebarToggleIconShow');
+
+    function closeMobileSidebar() {
+      if (appSidebar) {
+        appSidebar.classList.remove('mobile-open');
+        if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
+        if (sidebarToggleIconHide && sidebarToggleIconShow && window.innerWidth <= 768) {
+          sidebarToggleIconHide.style.display = 'none';
+          sidebarToggleIconShow.style.display = 'block';
+        }
+        if (btnToggleSidebar && window.innerWidth <= 768) {
+          btnToggleSidebar.setAttribute('title', 'Show Menu');
+        }
+      }
+    }
+
+    function openMobileSidebar() {
+      if (appSidebar) {
+        appSidebar.classList.add('mobile-open');
+        if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
+        if (sidebarToggleIconHide && sidebarToggleIconShow && window.innerWidth <= 768) {
+          sidebarToggleIconHide.style.display = 'block';
+          sidebarToggleIconShow.style.display = 'none';
+        }
+        if (btnToggleSidebar && window.innerWidth <= 768) {
+          btnToggleSidebar.setAttribute('title', 'Hide Menu');
+        }
+      }
+    }
+
+    const btnMobileMenuOpen = document.getElementById('btnMobileMenuOpen');
+    if (btnMobileMenuOpen && appSidebar) {
+      btnMobileMenuOpen.addEventListener('click', function() {
+        if (appSidebar.classList.contains('mobile-open')) {
+          closeMobileSidebar();
+        } else {
+          openMobileSidebar();
+        }
+      });
+    }
+
+    if (btnToggleSidebar && appSidebar) {
+      btnToggleSidebar.addEventListener('click', function() {
+        if (window.innerWidth <= 768) {
+          const isOpen = appSidebar.classList.contains('mobile-open');
+          if (isOpen) {
+            closeMobileSidebar();
+          } else {
+            openMobileSidebar();
+          }
+        } else {
+          const isCollapsed = appSidebar.classList.toggle('sidebar-collapsed');
+          if (sidebarToggleIconHide && sidebarToggleIconShow) {
+            sidebarToggleIconHide.style.display = isCollapsed ? 'none' : 'block';
+            sidebarToggleIconShow.style.display = isCollapsed ? 'block' : 'none';
+          }
+          btnToggleSidebar.setAttribute('title', isCollapsed ? 'Show Menu' : 'Hide Menu');
+        }
+      });
+    }
+
+    if (sidebarBackdrop) {
+      sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+    }
+
+    // Adjust initial icon state on mobile resize / load
+    function syncSidebarOnResize() {
+      if (window.innerWidth <= 768) {
+        if (!appSidebar.classList.contains('mobile-open')) {
+          if (sidebarToggleIconHide && sidebarToggleIconShow) {
+            sidebarToggleIconHide.style.display = 'none';
+            sidebarToggleIconShow.style.display = 'block';
+          }
+        }
+      } else {
+        if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
+        const isCollapsed = appSidebar.classList.contains('sidebar-collapsed');
+        if (sidebarToggleIconHide && sidebarToggleIconShow) {
+          sidebarToggleIconHide.style.display = isCollapsed ? 'none' : 'block';
+          sidebarToggleIconShow.style.display = isCollapsed ? 'block' : 'none';
+        }
+      }
+    }
+    window.addEventListener('resize', syncSidebarOnResize);
+    syncSidebarOnResize();
+
+    // Initialize Dashboard & Modules safely on load
+    initDashboardDates();
+    loadDashboardAnalytics();
+    loadSyncStatus();
+  </script>
+</body>
+</html>

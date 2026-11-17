@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Approven &bull; Customer Portal</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="/static/Approven Mobile App Icon.png">
+  <link rel="manifest" href="/customerportal/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-touch-fullscreen" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Approven">
+  <meta name="application-name" content="Approven">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/customerportal/static/portal.css?v={{ cache_buster }}">
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <img src="/static/Approven Mobile App Icon.png" alt="Approven Logo" class="nav-logo" onerror="this.style.display='none'">
+      <div class="brand-info">
+        <span class="brand-name">Approven</span>
+        <span class="brand-portal">Customer Portal</span>
+      </div>
+    </div>
+
+    <nav class="nav-center">
+      <button class="nav-link-btn active" data-target="dashboard">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>Overview</span>
+      </button>
+      <button class="nav-link-btn" data-target="quotes">
+        <i class="fa-solid fa-file-invoice-dollar"></i>
+        <span>Quotes</span>
+      </button>
+      <button class="nav-link-btn" data-target="audits">
+        <i class="fa-solid fa-clipboard-check"></i>
+        <span>Audits</span>
+      </button>
+      <button class="nav-link-btn" data-target="documents">
+        <i class="fa-solid fa-folder-open"></i>
+        <span>Documents</span>
+      </button>
+      <button class="nav-link-btn" data-target="profile">
+        <i class="fa-solid fa-building"></i>
+        <span>My Profile</span>
+      </button>
+    </nav>
+
+    <div class="nav-user">
+      <div class="user-badge">
+        <div class="cb-name">{{ user.company_name }}</div>
+        <div class="cb-email">{{ user.billing_email }}</div>
+      </div>
+      <a href="/customerportal/logout" class="btn-signout" title="Sign Out">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        <span>Sign Out</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="main-wrapper">
+
+    <!-- ================================================================= -->
+    <!-- 1. DASHBOARD OVERVIEW -->
+    <!-- ================================================================= -->
+    <section id="section-dashboard" class="page-section active">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">
+            <i class="fa-solid fa-house" style="color:var(--primary);"></i>
+            Welcome, {{ user.company_name }}
+          </h1>
+          <p class="section-subtitle">Overview of your quotations, scheduled audits, and compliance documentation.</p>
+        </div>
+        <div>
+          <button class="btn-action btn-primary-action" onclick="switchSection('documents')">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Upload Document
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Stats -->
+      <div class="kpi-grid">
+        <div class="kpi-card" onclick="switchSection('quotes')" style="cursor:pointer;">
+          <div class="kpi-icon-box blue">
+            <i class="fa-solid fa-file-invoice-dollar"></i>
+          </div>
+          <div class="kpi-content">
+            <div id="statTotalQuotes" class="kpi-value">0</div>
+            <div class="kpi-label">Total Quotes</div>
+          </div>
+        </div>
+
+        <div class="kpi-card" onclick="switchSection('quotes')" style="cursor:pointer;">
+          <div class="kpi-icon-box green">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+          </div>
+          <div class="kpi-content">
+            <div id="statQuotedVal" class="kpi-value">€0.00</div>
+            <div class="kpi-label">Total Quoted Value</div>
+          </div>
+        </div>
+
+        <div class="kpi-card" onclick="switchSection('audits')" style="cursor:pointer;">
+          <div class="kpi-icon-box amber">
+            <i class="fa-solid fa-clipboard-list"></i>
+          </div>
+          <div class="kpi-content">
+            <div id="statTotalAudits" class="kpi-value">0</div>
+            <div class="kpi-label">Total Audits</div>
+          </div>
+        </div>
+
+        <div class="kpi-card" onclick="switchSection('audits')" style="cursor:pointer;">
+          <div class="kpi-icon-box purple">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <div class="kpi-content">
+            <div id="statConfirmedAudits" class="kpi-value">0</div>
+            <div class="kpi-label">Confirmed Audits</div>
+          </div>
+        </div>
+
+        <div class="kpi-card" onclick="switchSection('documents')" style="cursor:pointer;">
+          <div class="kpi-icon-box blue">
+            <i class="fa-solid fa-folder-open"></i>
+          </div>
+          <div class="kpi-content">
+            <div id="statDocumentsCount" class="kpi-value">0</div>
+            <div class="kpi-label">Uploaded Documents</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Links Grid -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px; margin-top:12px;">
+        <div class="table-card" style="padding:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:var(--slate-900); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-file-invoice-dollar" style="color:var(--primary);"></i>
+            Quotation Management
+          </h3>
+          <p style="font-size:13px; color:var(--slate-600); line-height:1.5; margin-bottom:16px;">
+            Review all audit quotations prepared for your certification projects, including cost breakdowns, approval statuses, and expiration deadlines.
+          </p>
+          <button class="btn-action btn-primary-action" onclick="switchSection('quotes')">
+            <span>View All Quotes</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <div class="table-card" style="padding:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:var(--slate-900); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-clipboard-check" style="color:var(--success);"></i>
+            Audit Execution & Tracking
+          </h3>
+          <p style="font-size:13px; color:var(--slate-600); line-height:1.5; margin-bottom:16px;">
+            Track scheduled audit windows, confirmed auditor assignments, execution dates, mandays required, and invoicing details.
+          </p>
+          <button class="btn-action btn-primary-action" onclick="switchSection('audits')">
+            <span>View Audit Schedule</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <div class="table-card" style="padding:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:var(--slate-900); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-cloud-arrow-up" style="color:var(--warning);"></i>
+            Compliance Document Hub
+          </h3>
+          <p style="font-size:13px; color:var(--slate-600); line-height:1.5; margin-bottom:16px;">
+            Upload and securely exchange audit plans, pre-audit questionnaires, self-assessments, corrective action proofs, and certificates.
+          </p>
+          <button class="btn-action btn-primary-action" onclick="switchSection('documents')">
+            <span>Manage Documents</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- 2. QUOTES SECTION -->
+    <!-- ================================================================= -->
+    <section id="section-quotes" class="page-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">
+            <i class="fa-solid fa-file-invoice-dollar" style="color:var(--primary);"></i>
+            My Quotations
+          </h1>
+          <p class="section-subtitle">Quotations linked to {{ user.company_name }}.</p>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="control-bar">
+        <div id="quoteFilters" class="filter-group">
+          <button class="filter-btn active" onclick="filterQuotes('All', this)">All Quotes</button>
+          <button class="filter-btn" onclick="filterQuotes('Accepted', this)">Accepted</button>
+          <button class="filter-btn" onclick="filterQuotes('Sent to Client', this)">Sent to Client</button>
+          <button class="filter-btn" onclick="filterQuotes('Preparing', this)">Preparing</button>
+          <button class="filter-btn" onclick="filterQuotes('Declined', this)">Declined</button>
+        </div>
+
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="quotesSearchInput" class="search-input" placeholder="Search by QuoteRef, Auditee..." oninput="renderQuotesTable()">
+        </div>
+      </div>
+
+      <!-- Table Card -->
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Quote Ref</th>
+              <th>Auditee / Company</th>
+              <th>Program & Type</th>
+              <th>Created Date</th>
+              <th>Valid Until</th>
+              <th>Total Amount</th>
+              <th>Status</th>
+              <th style="text-align:right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="quotesTableBody">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- 3. AUDITS SECTION -->
+    <!-- ================================================================= -->
+    <section id="section-audits" class="page-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">
+            <i class="fa-solid fa-clipboard-check" style="color:var(--primary);"></i>
+            My Audits
+          </h1>
+          <p class="section-subtitle">Audit workflows and schedules for {{ user.company_name }}.</p>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="control-bar">
+        <div id="auditFilters" class="filter-group">
+          <button class="filter-btn active" onclick="filterAudits('All', this)">All Audits</button>
+          <button class="filter-btn" onclick="filterAudits('Confirmed', this)">Confirmed</button>
+          <button class="filter-btn" onclick="filterAudits('Pending', this)">Pending</button>
+          <button class="filter-btn" onclick="filterAudits('Complete', this)">Complete</button>
+        </div>
+
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="auditsSearchInput" class="search-input" placeholder="Search audits, location..." oninput="renderAuditsTable()">
+        </div>
+      </div>
+
+      <!-- Table Card -->
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Audit ID</th>
+              <th>Auditee & Site</th>
+              <th>Program / Type</th>
+              <th>Audit Dates</th>
+              <th>Mandays</th>
+              <th>Status</th>
+              <th style="text-align:right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="auditsTableBody">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- 4. DOCUMENTS SECTION -->
+    <!-- ================================================================= -->
+    <section id="section-documents" class="page-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">
+            <i class="fa-solid fa-folder-open" style="color:var(--primary);"></i>
+            Document Management
+          </h1>
+          <p class="section-subtitle">Upload and download compliance documents, questionnaires, and certificates.</p>
+        </div>
+      </div>
+
+      <!-- Upload Form Card -->
+      <div class="table-card" style="padding:24px; margin-bottom:24px;">
+        <h3 style="font-size:16px; font-weight:700; color:var(--slate-900); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary);"></i>
+          Upload New Document
+        </h3>
+
+        <form id="docUploadForm" onsubmit="handleDocumentUpload(event)">
+          <input type="file" id="docFileInput" style="display:none;" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.zip">
+          
+          <div id="uploadDropzone" class="upload-dropzone">
+            <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+            <div class="upload-title">Click to browse or drag and drop files here</div>
+            <div class="upload-hint">Supports PDF, Word, Excel, Images, CSV, ZIP up to 30MB</div>
+            
+            <div id="selectedFileBox" style="display:none; margin-top:14px; background:#ffffff; padding:8px 16px; border-radius:6px; display:inline-flex; align-items:center; gap:8px; border:1px solid var(--slate-200);">
+              <i class="fa-solid fa-file text-primary"></i>
+              <strong id="selectedFileName" style="color:var(--slate-900);"></strong>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+            <div class="form-group">
+              <label class="form-label" for="uploadDocType">Document Category *</label>
+              <select id="uploadDocType" class="form-select" required>
+                <option value="Audit Plan">Audit Plan & Schedule</option>
+                <option value="Pre-Audit Questionnaire">Pre-Audit Questionnaire</option>
+                <option value="Self-Assessment">Self-Assessment Checklist</option>
+                <option value="Certificate">Certificate / Decision</option>
+                <option value="Scope Document">Scope & Site Details</option>
+                <option value="Corrective Action">Corrective Action / Non-Conformance Evidence</option>
+                <option value="Invoice / Proof of Payment">Invoice / Proof of Payment</option>
+                <option value="General Document">General Document</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="uploadWfidSelect">Related Audit (Optional)</label>
+              <select id="uploadWfidSelect" class="form-select">
+                <option value="">-- None / General --</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="uploadDocDesc">Notes / Description (Optional)</label>
+            <input type="text" id="uploadDocDesc" class="form-input" placeholder="e.g. 2026 Updated SMETA Pre-Audit Questionnaire signed by site director">
+          </div>
+
+          <div style="text-align:right;">
+            <button type="submit" id="uploadSubmitBtn" class="btn-action btn-primary-action" style="padding:10px 20px; font-size:14px;">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Upload Document
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Uploaded Documents Controls & List -->
+      <div class="control-bar">
+        <div id="docFilters" class="filter-group">
+          <button class="filter-btn active" onclick="filterDocuments('All', this)">All Documents</button>
+          <button class="filter-btn" onclick="filterDocuments('Audit Plan', this)">Audit Plans</button>
+          <button class="filter-btn" onclick="filterDocuments('Pre-Audit Questionnaire', this)">Questionnaires</button>
+          <button class="filter-btn" onclick="filterDocuments('Self-Assessment', this)">Self-Assessments</button>
+          <button class="filter-btn" onclick="filterDocuments('Certificate', this)">Certificates</button>
+          <button class="filter-btn" onclick="filterDocuments('Corrective Action', this)">Evidence</button>
+        </div>
+
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="docsSearchInput" class="search-input" placeholder="Search documents..." oninput="renderDocumentsTable()">
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>File Name</th>
+              <th>Category</th>
+              <th>Linked Audit</th>
+              <th>File Size</th>
+              <th>Uploaded By & Date</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="docsTableBody">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- 5. PROFILE SECTION -->
+    <!-- ================================================================= -->
+    <section id="section-profile" class="page-section">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">
+            <i class="fa-solid fa-building" style="color:var(--primary);"></i>
+            Certification Body Profile
+          </h1>
+          <p class="section-subtitle">Account details and standard commercial terms.</p>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        <!-- Company Info -->
+        <div class="table-card" style="padding:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:var(--slate-900); margin-bottom:16px; border-bottom:1px solid var(--slate-200); padding-bottom:10px;">
+            Account Details
+          </h3>
+          <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
+            <div>
+              <div style="font-size:11px; font-weight:700; color:var(--slate-500); text-transform:uppercase;">Company Name</div>
+              <div id="profileCompanyName" style="font-size:15px; font-weight:700; color:var(--slate-900);">--</div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <div style="font-size:11px; font-weight:700; color:var(--slate-500); text-transform:uppercase;">Code</div>
+                <div id="profileCode" style="font-weight:600;">--</div>
+              </div>
+              <div>
+                <div style="font-size:11px; font-weight:700; color:var(--slate-500); text-transform:uppercase;">Customer Nr</div>
+                <div id="profileCustNr" style="font-weight:600;">--</div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:700; color:var(--slate-500); text-transform:uppercase;">Billing Email</div>
+              <div id="profileEmail" style="font-weight:600; color:var(--primary);">--</div>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:700; color:var(--slate-500); text-transform:uppercase;">Contact Person</div>
+              <div id="profileContact" style="font-weight:600;">--</div>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:700; color:var(--slate-500); text-transform:uppercase;">Telephone</div>
+              <div id="profileTel" style="font-weight:600;">--</div>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:700; color:var(--slate-500); text-transform:uppercase;">Billing Address</div>
+              <div id="profileAddress" style="font-weight:500;">--</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Commercial Terms -->
+        <div class="table-card" style="padding:24px;">
+          <h3 style="font-size:16px; font-weight:700; color:var(--slate-900); margin-bottom:16px; border-bottom:1px solid var(--slate-200); padding-bottom:10px;">
+            Standard Rate Agreement
+          </h3>
+          <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--slate-100);">
+              <span style="color:var(--slate-600);">Auditor Man Day Rate:</span>
+              <strong id="rateManday" style="color:var(--slate-900);">--</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--slate-100);">
+              <span style="color:var(--slate-600);">Travel Rate Per KM:</span>
+              <strong id="rateKM" style="color:var(--slate-900);">--</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--slate-100);">
+              <span style="color:var(--slate-600);">Travel Time Rate (per Hour):</span>
+              <strong id="rateTravel" style="color:var(--slate-900);">--</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--slate-100);">
+              <span style="color:var(--slate-600);">Hotel Rate (per Night):</span>
+              <strong id="rateHotel" style="color:var(--slate-900);">--</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0;">
+              <span style="color:var(--slate-600);">Report Fee:</span>
+              <strong id="rateReport" style="color:var(--slate-900);">--</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Quote Detail Modal -->
+  <div id="quoteDetailModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+          <span id="modalQuoteRef">Quote Details</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('quoteDetailModal')">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="modalQuoteBody" class="modal-body">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-action" onclick="closeModal('quoteDetailModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audit Detail Modal -->
+  <div id="auditDetailModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-clipboard-check"></i>
+          <span id="modalAuditRef">Audit Details</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('auditDetailModal')">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="modalAuditBody" class="modal-body">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-action" onclick="closeModal('auditDetailModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/customerportal/static/portal.js?v={{ cache_buster }}"></script>
+</body>
+</html>

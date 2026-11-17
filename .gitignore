@@ -1,0 +1,25 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Private keys, certificates and tokens
+cert/*.pem
+cert/*.key
+duckdns_token.txt
+*.env
+.env
+
+# Access databases & lock files
+*.accdb
+*.laccdb
+
+# Scratch scripts and temporary files
+scratch/
+*.log
+caddy_access.log
+
+# OS metadata
+Thumbs.db
+Desktop.ini
+.DS_Store

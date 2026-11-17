@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Approven &bull; Customer Portal</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="/static/Approven Mobile App Icon.png">
+  
+  <!-- PWA & Standalone Fullscreen Web App Meta -->
+  <link rel="manifest" href="/customerportal/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-touch-fullscreen" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Approven">
+  <meta name="application-name" content="Approven">
+  <meta name="theme-color" content="#0f172a">
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/customerportal/static/mobile_portal.css?v={{ cache_buster }}">
+</head>
+<body>
+
+  <!-- Top Mobile Header -->
+  <header class="mobile-top-header">
+    <button id="hamburgerBtn" class="hamburger-btn" aria-label="Open Navigation Menu">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div class="mobile-title">
+      <img src="/static/Approven Mobile App Icon.png" alt="Approven" style="height:26px; border-radius:6px;" onerror="this.style.display='none'">
+      <span>Approven</span>
+    </div>
+    <div class="cb-badge-pill" title="{{ user.company_name }}">
+      {{ user.code or user.company_name }}
+    </div>
+  </header>
+
+  <!-- Side Drawer (3 lines menu) -->
+  <div id="drawerBackdrop" class="drawer-backdrop"></div>
+  <aside id="drawerPanel" class="drawer-panel">
+    <div class="drawer-header">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="drawer-brand">
+          <i class="fa-solid fa-building-shield" style="color:var(--primary);"></i>
+          <span>Approven Portal</span>
+        </div>
+        <button id="drawerCloseBtn" style="background:none; border:none; color:#94a3b8; font-size:18px;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="drawer-cb-name">{{ user.company_name }}</div>
+      <div class="drawer-cb-email">{{ user.billing_email }}</div>
+    </div>
+
+    <div class="drawer-body">
+      <a href="#" class="drawer-link" data-m-target="overview">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>Overview</span>
+      </a>
+      <a href="#" class="drawer-link" data-m-target="quotes">
+        <i class="fa-solid fa-file-invoice-dollar"></i>
+        <span>Quotes</span>
+      </a>
+      <a href="#" class="drawer-link" data-m-target="audits">
+        <i class="fa-solid fa-clipboard-check"></i>
+        <span>Audits</span>
+      </a>
+      <a href="#" class="drawer-link" data-m-target="documents">
+        <i class="fa-solid fa-folder-open"></i>
+        <span>Documents</span>
+      </a>
+      <a href="#" class="drawer-link" data-m-target="profile">
+        <i class="fa-solid fa-building"></i>
+        <span>My Profile</span>
+      </a>
+
+      <div style="border-top:1px solid var(--slate-200); margin:12px 0;"></div>
+
+      <a href="/customerportal?view=desktop" class="drawer-link">
+        <i class="fa-solid fa-desktop"></i>
+        <span>Switch to Desktop View</span>
+      </a>
+    </div>
+
+    <div class="drawer-footer">
+      <a href="/customerportal/logout" class="btn-drawer-signout">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        <span>Sign Out</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ================================================================= -->
+  <!-- 1. OVERVIEW VIEW -->
+  <!-- ================================================================= -->
+  <section id="mview-overview" class="mobile-view active">
+    <div style="margin-bottom:14px;">
+      <h2 style="font-size:18px; font-weight:800; color:var(--slate-900);">Dashboard</h2>
+      <p style="font-size:12px; color:var(--slate-500);">Welcome back, {{ user.company_name }}</p>
+    </div>
+
+    <div class="m-kpi-grid">
+      <div class="m-kpi-card" onclick="switchMobileTab('quotes')">
+        <div class="m-kpi-icon blue"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+        <div id="mStatQuotes" class="m-kpi-val">0</div>
+        <div class="m-kpi-lbl">Quotes</div>
+      </div>
+
+      <div class="m-kpi-card" onclick="switchMobileTab('quotes')">
+        <div class="m-kpi-icon green"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+        <div id="mStatQuotedVal" class="m-kpi-val" style="font-size:15px;">€0.00</div>
+        <div class="m-kpi-lbl">Quoted Value</div>
+      </div>
+
+      <div class="m-kpi-card" onclick="switchMobileTab('audits')">
+        <div class="m-kpi-icon amber"><i class="fa-solid fa-clipboard-list"></i></div>
+        <div id="mStatAudits" class="m-kpi-val">0</div>
+        <div class="m-kpi-lbl">Audits</div>
+      </div>
+
+      <div class="m-kpi-card" onclick="switchMobileTab('documents')">
+        <div class="m-kpi-icon purple"><i class="fa-solid fa-folder-open"></i></div>
+        <div id="mStatDocs" class="m-kpi-val">0</div>
+        <div class="m-kpi-lbl">Documents</div>
+      </div>
+    </div>
+
+    <!-- Quick Action Cards -->
+    <div class="m-card" onclick="switchMobileTab('documents')" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="m-kpi-icon blue" style="margin-bottom:0;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+        <div>
+          <div style="font-weight:700; font-size:14px;">Upload Document</div>
+          <div style="font-size:12px; color:#64748b;">Add questionnaire or proof</div>
+        </div>
+      </div>
+      <i class="fa-solid fa-chevron-right" style="color:#94a3b8;"></i>
+    </div>
+
+    <div class="m-card" onclick="switchMobileTab('audits')" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="m-kpi-icon amber" style="margin-bottom:0;"><i class="fa-solid fa-calendar-check"></i></div>
+        <div>
+          <div style="font-weight:700; font-size:14px;">Audit Schedules</div>
+          <div style="font-size:12px; color:#64748b;">View active audit dates</div>
+        </div>
+      </div>
+      <i class="fa-solid fa-chevron-right" style="color:#94a3b8;"></i>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- 2. QUOTES VIEW -->
+  <!-- ================================================================= -->
+  <section id="mview-quotes" class="mobile-view">
+    <div class="m-search-box">
+      <i class="fa-solid fa-magnifying-glass m-search-icon"></i>
+      <input type="text" id="mQuotesSearch" class="m-search-input" placeholder="Search quotes..." oninput="renderMobileQuotes()">
+    </div>
+
+    <div id="mQuoteFilters" class="m-filter-scroll">
+      <button class="m-filter-pill active" onclick="filterMobileQuotes('All', this)">All</button>
+      <button class="m-filter-pill" onclick="filterMobileQuotes('Accepted', this)">Accepted</button>
+      <button class="m-filter-pill" onclick="filterMobileQuotes('Sent to Client', this)">Sent</button>
+      <button class="m-filter-pill" onclick="filterMobileQuotes('Preparing', this)">Preparing</button>
+    </div>
+
+    <div id="mQuotesContainer">
+      <!-- Rendered by JS -->
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- 3. AUDITS VIEW -->
+  <!-- ================================================================= -->
+  <section id="mview-audits" class="mobile-view">
+    <div class="m-search-box">
+      <i class="fa-solid fa-magnifying-glass m-search-icon"></i>
+      <input type="text" id="mAuditsSearch" class="m-search-input" placeholder="Search audits..." oninput="renderMobileAudits()">
+    </div>
+
+    <div id="mAuditFilters" class="m-filter-scroll">
+      <button class="m-filter-pill active" onclick="filterMobileAudits('All', this)">All</button>
+      <button class="m-filter-pill" onclick="filterMobileAudits('Confirmed', this)">Confirmed</button>
+      <button class="m-filter-pill" onclick="filterMobileAudits('Pending', this)">Pending</button>
+      <button class="m-filter-pill" onclick="filterMobileAudits('Complete', this)">Complete</button>
+    </div>
+
+    <div id="mAuditsContainer">
+      <!-- Rendered by JS -->
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- 4. DOCUMENTS VIEW -->
+  <!-- ================================================================= -->
+  <section id="mview-documents" class="mobile-view">
+    <!-- Upload Card -->
+    <div class="m-card" style="margin-bottom:16px;">
+      <div style="font-weight:700; font-size:15px; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+        <i class="fa-solid fa-cloud-arrow-up" style="color:var(--primary);"></i>
+        Upload Document
+      </div>
+
+      <form onsubmit="handleMobileUpload(event)">
+        <div style="margin-bottom:10px;">
+          <input type="file" id="mFileInput" style="width:100%; font-size:13px;" required>
+        </div>
+
+        <div style="margin-bottom:10px;">
+          <label style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Category</label>
+          <select id="mUploadType" style="width:100%; height:38px; border-radius:8px; border:1px solid #cbd5e1; padding:0 8px; font-size:13px;">
+            <option value="Audit Plan">Audit Plan</option>
+            <option value="Pre-Audit Questionnaire">Pre-Audit Questionnaire</option>
+            <option value="Self-Assessment">Self-Assessment</option>
+            <option value="Certificate">Certificate</option>
+            <option value="Corrective Action">Corrective Action Evidence</option>
+            <option value="General Document">General Document</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom:10px;">
+          <label style="font-size:11px; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Related Audit (Optional)</label>
+          <select id="mUploadWfid" style="width:100%; height:38px; border-radius:8px; border:1px solid #cbd5e1; padding:0 8px; font-size:13px;">
+            <option value="">-- General / None --</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <input type="text" id="mUploadDesc" placeholder="Description / notes..." style="width:100%; height:38px; border-radius:8px; border:1px solid #cbd5e1; padding:0 10px; font-size:13px;">
+        </div>
+
+        <button type="submit" id="mUploadBtn" style="width:100%; height:42px; background:var(--primary); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
+          <span>Upload File</span>
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Document List -->
+    <div style="font-weight:700; font-size:15px; margin-bottom:8px; color:var(--slate-900);">Uploaded Files</div>
+    <div class="m-search-box">
+      <i class="fa-solid fa-magnifying-glass m-search-icon"></i>
+      <input type="text" id="mDocsSearch" class="m-search-input" placeholder="Search uploaded documents..." oninput="renderMobileDocuments()">
+    </div>
+
+    <div id="mDocsContainer">
+      <!-- Rendered by JS -->
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- 5. PROFILE VIEW -->
+  <!-- ================================================================= -->
+  <section id="mview-profile" class="mobile-view">
+    <div class="m-card">
+      <div style="font-weight:800; font-size:16px; margin-bottom:12px; border-bottom:1px solid var(--slate-100); padding-bottom:8px;">
+        Account Information
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; font-size:13px;">
+        <div>
+          <div style="font-size:11px; color:#64748b;">Certification Body</div>
+          <strong id="mProfileName" style="color:var(--slate-900);">--</strong>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#64748b;">Code</div>
+          <strong id="mProfileCode">--</strong>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#64748b;">Billing Email</div>
+          <strong id="mProfileEmail" style="color:var(--primary);">--</strong>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#64748b;">Contact Person</div>
+          <strong id="mProfileContact">--</strong>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#64748b;">Telephone</div>
+          <strong id="mProfileTel">--</strong>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#64748b;">Address</div>
+          <div id="mProfileAddress" style="color:#475569;">--</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="m-card">
+      <div style="font-weight:800; font-size:16px; margin-bottom:12px; border-bottom:1px solid var(--slate-100); padding-bottom:8px;">
+        Commercial Rates
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:#64748b;">Manday Rate:</span>
+          <strong id="mRateManday">--</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:#64748b;">Travel / KM Rate:</span>
+          <strong id="mRateKM">--</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:#64748b;">Travel Time Rate / Hr:</span>
+          <strong id="mRateTravel">--</strong>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom Navigation Bar (5 Icons) -->
+  <nav class="bottom-nav">
+    <button class="nav-tab-btn active" data-tab="overview">
+      <i class="fa-solid fa-chart-pie"></i>
+      <span>Overview</span>
+    </button>
+    <button class="nav-tab-btn" data-tab="quotes">
+      <i class="fa-solid fa-file-invoice-dollar"></i>
+      <span>Quotes</span>
+    </button>
+    <button class="nav-tab-btn" data-tab="audits">
+      <i class="fa-solid fa-clipboard-check"></i>
+      <span>Audits</span>
+    </button>
+    <button class="nav-tab-btn" data-tab="documents">
+      <i class="fa-solid fa-folder-open"></i>
+      <span>Uploads</span>
+    </button>
+    <button class="nav-tab-btn" data-tab="profile">
+      <i class="fa-solid fa-building"></i>
+      <span>Profile</span>
+    </button>
+  </nav>
+
+  <!-- Mobile Bottom Sheet for Detail Modals -->
+  <div id="bottomSheet" class="bottom-sheet">
+    <div class="sheet-content">
+      <div class="sheet-header">
+        <div id="mSheetTitle" class="sheet-title">Details</div>
+        <button class="sheet-close" onclick="closeBottomSheet()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="mSheetBody" class="sheet-body">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/customerportal/static/mobile_portal.js?v={{ cache_buster }}"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/customerportal/sw.js')
+          .then((reg) => console.log('Portal SW registered'))
+          .catch((err) => console.log('Portal SW registration error:', err));
+      });
+    }
+
+    if (('standalone' in window.navigator) && window.navigator.standalone) {
+      document.addEventListener('click', function(e) {
+        let target = e.target.closest('a');
+        if (target && target.href && target.href.indexOf(window.location.host) !== -1 && !target.target && !target.hasAttribute('download')) {
+          e.preventDefault();
+          window.location.href = target.href;
+        }
+      }, false);
+    }
+  </script>
+</body>
+</html>

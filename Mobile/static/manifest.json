@@ -1,0 +1,30 @@
+{
+  "name": "Approven Mobile",
+  "short_name": "Approven",
+  "description": "Approven Audit Management Mobile Portal",
+  "start_url": "/m",
+  "scope": "/m",
+  "display": "standalone",
+  "background_color": "#001429",
+  "theme_color": "#001429",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/m/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/m/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/m/static/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
