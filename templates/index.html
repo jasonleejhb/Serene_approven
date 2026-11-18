@@ -289,6 +289,10 @@
                 Showing 0 audits
               </div>
 
+              <button type="button" id="btnCreateWorkflow" onclick="openWorkflowModal(null)" class="btn-primary" style="background-color: #001429; border-color: #001429; color: #ffffff; padding: 0.45rem 1rem; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; border-radius: 6px; cursor: pointer;">
+                <span>+ Create New</span>
+              </button>
+
               <button type="button" id="btnExportAuditsXLSX" class="btn-primary" style="background-color: #10b981; border-color: #10b981; color: #ffffff; padding: 0.45rem 1rem; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 6px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" title="Export audits list to Microsoft Excel (.xlsx)">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
                 <span>Export to XLSX</span>
@@ -298,7 +302,7 @@
 
           <!-- Data Table for Audits List -->
           <div class="data-table-container" style="max-height: calc(100vh - 220px); overflow: auto;">
-            <table class="data-table" id="auditsListTable">
+            <table class="data-table compact-audits-table" id="auditsListTable">
               <thead>
                 <tr>
                   <th class="sortable-th-audit" data-sort-key="WFID" style="cursor: pointer; white-space: nowrap;">WFID <span class="sort-icon">↕</span></th>
@@ -505,10 +509,15 @@
           <input type="hidden" id="cb_id" name="ID">
 
           <!-- Modal Tab Navigation -->
-          <div class="modal-tabs">
+          <div class="modal-tabs" style="flex-wrap: wrap;">
             <button type="button" class="tab-btn active" data-tab="tab-general">General &amp; Billing Info</button>
             <button type="button" class="tab-btn" data-tab="tab-rates">Rates &amp; Terms</button>
             <button type="button" class="tab-btn" data-tab="tab-contacts">Contacts</button>
+            <button type="button" class="tab-btn" data-tab="tab-cb-programs">Audit Programs &amp; Rates</button>
+            <button type="button" class="tab-btn" data-tab="tab-cb-onboarding">Auditors Onboarded &amp; Programs Compliant</button>
+            <button type="button" class="tab-btn" data-tab="tab-cb-po">PO Numbers</button>
+            <button type="button" class="tab-btn" data-tab="tab-cb-audits">Audit History</button>
+            <button type="button" class="tab-btn" data-tab="tab-cb-quotes">Quote History</button>
           </div>
 
           <!-- Tab 1: General & Billing -->
@@ -630,6 +639,139 @@
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+
+          <!-- Tab 4: Audit Programs & Rates -->
+          <div id="tab-cb-programs" class="tab-content">
+            <div class="subform-container">
+              <div class="subform-header">
+                <span class="subform-title">Audit Programs &amp; Specific Rates</span>
+                <button type="button" class="btn-secondary" onclick="addCBProgramRow()">+ Add Program Rate</button>
+              </div>
+              <div style="overflow-x: auto; max-height: 360px;">
+                <table class="data-table subform-table compact-audits-table">
+                  <thead>
+                    <tr>
+                      <th>Audit Program</th>
+                      <th style="width:110px;">Mandays</th>
+                      <th style="width:130px;">Manday Rate (€)</th>
+                      <th style="width:130px;">Report %</th>
+                      <th style="width:60px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cbProgramsSubformBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 5: Auditors Onboarded & Programs Compliant -->
+          <div id="tab-cb-onboarding" class="tab-content">
+            <div style="display: grid; grid-template-columns: 1fr 1.25fr; gap: 1rem; align-items: start;">
+              <div class="subform-container" style="margin-top:0;">
+                <div class="subform-header">
+                  <span class="subform-title">Onboarding (Per Auditor)</span>
+                </div>
+                <div style="max-height: 360px; overflow-y: auto;">
+                  <table class="data-table subform-table compact-audits-table">
+                    <thead>
+                      <tr>
+                        <th>Auditor</th>
+                        <th style="width: 155px;">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="cbOnboardingBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="subform-container" style="margin-top:0;">
+                <div class="subform-header">
+                  <span class="subform-title">Per Audit Program (Compliant)</span>
+                  <button type="button" class="btn-secondary" onclick="addCBAuditorProgramRow()">+ Add Compliant Program</button>
+                </div>
+                <div style="max-height: 360px; overflow-y: auto;">
+                  <table class="data-table subform-table compact-audits-table">
+                    <thead>
+                      <tr>
+                        <th>Auditor</th>
+                        <th>Program</th>
+                        <th style="width: 115px;">Status</th>
+                        <th style="width: 45px;"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="cbAuditorProgramsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 6: PO Numbers -->
+          <div id="tab-cb-po" class="tab-content">
+            <div class="subform-container">
+              <div class="subform-header">
+                <span class="subform-title">PO Numbers</span>
+                <button type="button" class="btn-secondary" onclick="addCBPORow()">+ Add PO Number</button>
+              </div>
+              <div style="max-height: 360px; overflow-y: auto;">
+                <table class="data-table subform-table compact-audits-table">
+                  <thead>
+                    <tr>
+                      <th>PO Number</th>
+                      <th style="width: 150px;">From Date</th>
+                      <th style="width: 150px;">To Date</th>
+                      <th style="width: 60px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cbPOSubformBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 7: Audit History -->
+          <div id="tab-cb-audits" class="tab-content">
+            <div style="max-height: 380px; overflow: auto;">
+              <table class="data-table compact-audits-table">
+                <thead>
+                  <tr>
+                    <th>WFID</th>
+                    <th>Status</th>
+                    <th>Auditee</th>
+                    <th>Program</th>
+                    <th>Type</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th style="text-align:center;">Mandays</th>
+                    <th style="text-align:right;">Quoted (€)</th>
+                  </tr>
+                </thead>
+                <tbody id="cbAuditHistoryBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab 8: Quote History -->
+          <div id="tab-cb-quotes" class="tab-content">
+            <div style="max-height: 380px; overflow: auto;">
+              <table class="data-table compact-audits-table">
+                <thead>
+                  <tr>
+                    <th>QuoteID</th>
+                    <th>WFID</th>
+                    <th>Ref</th>
+                    <th>Status</th>
+                    <th>Auditee</th>
+                    <th>Created</th>
+                    <th>Valid To</th>
+                    <th style="text-align:right;">SubTotal</th>
+                    <th style="text-align:right;">Total</th>
+                  </tr>
+                </thead>
+                <tbody id="cbQuoteHistoryBody"></tbody>
+              </table>
             </div>
           </div>
 
@@ -1206,6 +1348,8 @@
           } else {
             renderEmptyContactSubform();
           }
+
+          renderCBSubforms(data);
         } catch (err) {
           alert('Could not load record details: ' + err.message);
           return;
@@ -1215,6 +1359,7 @@
         document.getElementById('cb_id').value = '';
         populateCountryDropdown('');
         renderEmptyContactSubform();
+        renderCBSubforms({ programs: [], auditors_onboarded: [], auditor_programs: [], po_numbers: [], audit_history: [], quote_history: [], all_programs: [] });
       }
 
       document.getElementById('cbModal').classList.add('active');
@@ -1227,6 +1372,214 @@
       document.getElementById('contactsSubformBody').innerHTML = `
         <tr id="emptyContactsRow"><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1rem;">No contacts linked. Click "+ Add Contact" to create one.</td></tr>
       `;
+    }
+
+    let cbAllPrograms = [];
+    let cbAllAuditorsList = [];
+
+    function renderCBSubforms(data) {
+      cbAllPrograms = data.all_programs || [];
+      cbAllAuditorsList = (data.auditors_onboarded || []).map(a => ({ AuditorID: a.AuditorID, Auditor_Name: a.Auditor_Name }));
+
+      // 1. Audit Programs & Rates
+      const progBody = document.getElementById('cbProgramsSubformBody');
+      if (progBody) {
+        progBody.innerHTML = '';
+        if (data.programs && data.programs.length) {
+          data.programs.forEach(p => addCBProgramRow(p));
+        } else {
+          progBody.innerHTML = '<tr class="cb-empty-row"><td colspan="5" style="text-align:center;color:var(--text-muted);padding:0.8rem;">No program-specific rates. Click "+ Add Program Rate".</td></tr>';
+        }
+      }
+
+      // 2. Auditors Onboarded (Left)
+      const onbBody = document.getElementById('cbOnboardingBody');
+      if (onbBody) {
+        onbBody.innerHTML = (data.auditors_onboarded || []).map(a => `
+          <tr class="cb-onboarded-row" data-auditor-id="${a.AuditorID}">
+            <td><strong>${escapeHtml(a.Auditor_Name || '')}</strong></td>
+            <td>
+              <select class="form-input select-input cb-onboarded-status" style="padding:0.25rem 0.4rem;font-size:0.8rem;">
+                <option value="Onboarded" ${a.Status === 'Onboarded' ? 'selected' : ''}>Onboarded</option>
+                <option value="Not Onboarded" ${a.Status !== 'Onboarded' ? 'selected' : ''}>Not Onboarded</option>
+              </select>
+            </td>
+          </tr>
+        `).join('') || '<tr><td colspan="2" style="text-align:center;color:var(--text-muted);padding:0.8rem;">No active auditors found.</td></tr>';
+      }
+
+      // 3. Per Audit Program (Right)
+      const apBody = document.getElementById('cbAuditorProgramsBody');
+      if (apBody) {
+        apBody.innerHTML = '';
+        if (data.auditor_programs && data.auditor_programs.length) {
+          data.auditor_programs.forEach(ap => addCBAuditorProgramRow(ap));
+        } else {
+          apBody.innerHTML = '<tr class="cb-empty-row"><td colspan="4" style="text-align:center;color:var(--text-muted);padding:0.8rem;">No compliant auditor programs yet.</td></tr>';
+        }
+      }
+
+      // 4. PO Numbers
+      const poBody = document.getElementById('cbPOSubformBody');
+      if (poBody) {
+        poBody.innerHTML = '';
+        if (data.po_numbers && data.po_numbers.length) {
+          data.po_numbers.forEach(po => addCBPORow(po));
+        } else {
+          poBody.innerHTML = '<tr class="cb-empty-row"><td colspan="4" style="text-align:center;color:var(--text-muted);padding:0.8rem;">No PO numbers linked.</td></tr>';
+        }
+      }
+
+      // 5. Audit History
+      const ahBody = document.getElementById('cbAuditHistoryBody');
+      if (ahBody) {
+        ahBody.innerHTML = (data.audit_history || []).map(w => `
+          <tr class="clickable-row" onclick="forceCloseCBModal(); openWorkflowModal(${w.WFID});">
+            <td><strong>#${w.WFID}</strong></td>
+            <td><span class="status-badge">${escapeHtml(w.Status || '')}</span></td>
+            <td>${escapeHtml(w.Auditee_Name || '-')}</td>
+            <td>${escapeHtml(w.Audit_Program || '-')}</td>
+            <td>${escapeHtml(w.Audit_Type || '-')}</td>
+            <td>${w.Audit_Start_Date ? String(w.Audit_Start_Date).substring(0,10) : '-'}</td>
+            <td>${w.Audit_End_Date ? String(w.Audit_End_Date).substring(0,10) : '-'}</td>
+            <td style="text-align:center;">${w.Total_Mandays ?? '-'}</td>
+            <td style="text-align:right;font-weight:600;">${w.Amount_Quoted != null ? '€' + Number(w.Amount_Quoted).toFixed(2) : '-'}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:0.8rem;">No audit history for this CB.</td></tr>';
+      }
+
+      // 6. Quote History
+      const qhBody = document.getElementById('cbQuoteHistoryBody');
+      if (qhBody) {
+        qhBody.innerHTML = (data.quote_history || []).map(q => `
+          <tr class="clickable-row" onclick="if(${q.WFID ? 'true' : 'false'}){ forceCloseCBModal(); openWorkflowModal(${q.WFID}); }">
+            <td><strong>#${q.QuoteID}</strong></td>
+            <td>${q.WFID ? '#' + q.WFID : '-'}</td>
+            <td>${escapeHtml(q.QuoteRef || '-')}</td>
+            <td><span class="status-badge">${escapeHtml(q.Quote_Status || '-')}</span></td>
+            <td>${escapeHtml(q.Auditee_Name || '-')}</td>
+            <td>${q.Quote_Created ? String(q.Quote_Created).substring(0,10) : '-'}</td>
+            <td>${q.Quote_ValidTo ? String(q.Quote_ValidTo).substring(0,10) : '-'}</td>
+            <td style="text-align:right;">${q.Quote_SubTotal != null ? '€' + Number(q.Quote_SubTotal).toFixed(2) : '-'}</td>
+            <td style="text-align:right;font-weight:600;">${q.Quote_Total != null ? '€' + Number(q.Quote_Total).toFixed(2) : '-'}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:0.8rem;">No quote history for this CB.</td></tr>';
+      }
+    }
+
+    function addCBProgramRow(p = {}) {
+      const tbody = document.getElementById('cbProgramsSubformBody');
+      if (!tbody) return;
+      const empty = tbody.querySelector('.cb-empty-row');
+      if (empty) empty.remove();
+      const progOpts = '<option value="">-- Select Program --</option>' +
+        cbAllPrograms.map(pr => `<option value="${escapeHtml(pr)}" ${p.Program === pr ? 'selected' : ''}>${escapeHtml(pr)}</option>`).join('');
+      const tr = document.createElement('tr');
+      tr.className = 'cb-program-row';
+      tr.innerHTML = `
+        <td><select class="form-input select-input cb-prog-name" style="padding:0.25rem;font-size:0.8rem;">${progOpts}</select></td>
+        <td><input type="number" step="0.5" class="form-input cb-prog-mandays" style="padding:0.25rem;font-size:0.8rem;" value="${p.Mandays ?? ''}"></td>
+        <td><input type="number" step="0.01" class="form-input cb-prog-rate" style="padding:0.25rem;font-size:0.8rem;" value="${p.Manday_Rate ?? ''}"></td>
+        <td><input type="number" step="0.1" class="form-input cb-prog-rep" style="padding:0.25rem;font-size:0.8rem;" value="${p.Report_Percentage ?? ''}"></td>
+        <td style="text-align:center;"><button type="button" class="wf-btn-del" onclick="this.closest('tr').remove(); cbIsDirty=true;">&times;</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function addCBAuditorProgramRow(ap = {}) {
+      const tbody = document.getElementById('cbAuditorProgramsBody');
+      if (!tbody) return;
+      const empty = tbody.querySelector('.cb-empty-row');
+      if (empty) empty.remove();
+      const audOpts = '<option value="">-- Auditor --</option>' +
+        cbAllAuditorsList.map(a => `<option value="${a.AuditorID}" ${String(ap.AuditorID) === String(a.AuditorID) ? 'selected' : ''}>${escapeHtml(a.Auditor_Name)}</option>`).join('');
+      const progOpts = '<option value="">-- Program --</option>' +
+        cbAllPrograms.map(pr => `<option value="${escapeHtml(pr)}" ${ap.Program === pr ? 'selected' : ''}>${escapeHtml(pr)}</option>`).join('');
+      const tr = document.createElement('tr');
+      tr.className = 'cb-ap-row';
+      tr.innerHTML = `
+        <td><select class="form-input select-input cb-ap-auditor" style="padding:0.25rem;font-size:0.8rem;">${audOpts}</select></td>
+        <td><select class="form-input select-input cb-ap-program" style="padding:0.25rem;font-size:0.8rem;">${progOpts}</select></td>
+        <td>
+          <select class="form-input select-input cb-ap-status" style="padding:0.25rem;font-size:0.8rem;">
+            <option value="Compliant" ${(ap.Status || 'Compliant') === 'Compliant' ? 'selected' : ''}>Compliant</option>
+            <option value="Expired" ${ap.Status === 'Expired' ? 'selected' : ''}>Expired</option>
+          </select>
+        </td>
+        <td style="text-align:center;"><button type="button" class="wf-btn-del" onclick="this.closest('tr').remove(); cbIsDirty=true;">&times;</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function addCBPORow(po = {}) {
+      const tbody = document.getElementById('cbPOSubformBody');
+      if (!tbody) return;
+      const empty = tbody.querySelector('.cb-empty-row');
+      if (empty) empty.remove();
+      const fd = po.FromDate ? String(po.FromDate).substring(0, 10) : '';
+      const td = po.ToDate ? String(po.ToDate).substring(0, 10) : '';
+      const tr = document.createElement('tr');
+      tr.className = 'cb-po-row';
+      tr.innerHTML = `
+        <td><input type="text" class="form-input cb-po-num" style="padding:0.25rem;font-size:0.8rem;" value="${escapeHtml(po.PONumber || '')}"></td>
+        <td><input type="date" class="form-input cb-po-from" style="padding:0.25rem;font-size:0.8rem;" value="${fd}"></td>
+        <td><input type="date" class="form-input cb-po-to" style="padding:0.25rem;font-size:0.8rem;" value="${td}"></td>
+        <td style="text-align:center;"><button type="button" class="wf-btn-del" onclick="this.closest('tr').remove(); cbIsDirty=true;">&times;</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function collectCBSubformsPayload() {
+      const programs = [];
+      document.querySelectorAll('#cbProgramsSubformBody .cb-program-row').forEach(r => {
+        const prog = r.querySelector('.cb-prog-name').value;
+        if (prog) {
+          const m = r.querySelector('.cb-prog-mandays').value;
+          const mr = r.querySelector('.cb-prog-rate').value;
+          const rp = r.querySelector('.cb-prog-rep').value;
+          programs.push({
+            Program: prog,
+            Mandays: m !== '' ? parseFloat(m) : null,
+            Manday_Rate: mr !== '' ? parseFloat(mr) : null,
+            Report_Percentage: rp !== '' ? parseFloat(rp) : null
+          });
+        }
+      });
+
+      const auditors_onboarded = [];
+      document.querySelectorAll('#cbOnboardingBody .cb-onboarded-row').forEach(r => {
+        auditors_onboarded.push({
+          AuditorID: parseInt(r.getAttribute('data-auditor-id')),
+          Status: r.querySelector('.cb-onboarded-status').value
+        });
+      });
+
+      const auditor_programs = [];
+      document.querySelectorAll('#cbAuditorProgramsBody .cb-ap-row').forEach(r => {
+        const aid = r.querySelector('.cb-ap-auditor').value;
+        const prog = r.querySelector('.cb-ap-program').value;
+        if (aid && prog) {
+          auditor_programs.push({
+            AuditorID: parseInt(aid),
+            Program: prog,
+            Status: r.querySelector('.cb-ap-status').value
+          });
+        }
+      });
+
+      const po_numbers = [];
+      document.querySelectorAll('#cbPOSubformBody .cb-po-row').forEach(r => {
+        const num = r.querySelector('.cb-po-num').value.trim();
+        if (num) {
+          po_numbers.push({
+            PONumber: num,
+            FromDate: r.querySelector('.cb-po-from').value || null,
+            ToDate: r.querySelector('.cb-po-to').value || null
+          });
+        }
+      });
+
+      return { programs, auditors_onboarded, auditor_programs, po_numbers };
     }
 
     // Add a contact row to subform
@@ -1398,7 +1751,8 @@
         Report_Fee: parseFloatOrNull(document.getElementById('cb_Report_Fee').value),
         Comments: document.getElementById('cb_Comments').value.trim() || null,
         Quote_Terms: document.getElementById('cb_Quote_Terms').value.trim() || null,
-        contacts: contacts
+        contacts: contacts,
+        ...collectCBSubformsPayload()
       };
 
       const id = document.getElementById('cb_id').value;
@@ -3144,7 +3498,7 @@
           : `<span class="status-badge inactive">No</span>`;
 
         return `
-          <tr>
+          <tr class="clickable-row" onclick="openWorkflowModal(${r.WFID})" title="Click to open Audit / Quote #${r.WFID}">
             <td><strong>#${r.WFID}</strong> ${r.Project_Nr ? `<br><small style="color:#64748b;">${escapeHtml(r.Project_Nr)}</small>` : ''}</td>
             <td><span class="status-badge ${statusBadgeClass}">${escapeHtml(r.Workflow_Status || 'Active')}</span></td>
             <td><span class="status-badge ${qBadgeClass}">${escapeHtml(r.Quote_Status || '-')}</span></td>
@@ -3369,5 +3723,296 @@
     loadDashboardAnalytics();
     loadSyncStatus();
   </script>
+
+  <!-- Audit & Quote Workflow Modal -->
+  <div id="workflowModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content wf-modal-content">
+      <div class="wf-modal-header">
+        <div>
+          <h3 id="wfModalTitle" style="margin:0;font-size:1.15rem;">Audit Workflow</h3>
+          <small id="wfMetaInfo" style="color:#94a3b8;"></small>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+          <button type="button" class="btn-secondary" style="background:#1e293b;color:#fff;border-color:#334155;" onclick="saveWorkflowModal(true, 'Complete')">Complete</button>
+          <button type="button" class="btn-secondary" style="background:#7f1d1d;color:#fff;border-color:#991b1b;" onclick="saveWorkflowModal(true, 'Cancelled')">Cancel Audit</button>
+          <button type="button" id="btnSaveWorkflow" class="btn-primary" style="background:#10b981;border-color:#10b981;" onclick="saveWorkflowModal(false)">Save</button>
+          <button type="button" class="btn-primary" style="background:#0ea5e9;border-color:#0ea5e9;" onclick="saveWorkflowModal(true)">Save &amp; Close</button>
+          <button type="button" class="btn-secondary" style="background:#334155;color:#fff;border-color:#475569;" onclick="closeWorkflowModal()">Close Without Saving</button>
+        </div>
+      </div>
+
+      <div class="wf-modal-body">
+        <!-- Core Setup Grid -->
+        <div class="wf-core-grid">
+          <div class="wf-field">
+            <label>Certification Body</label>
+            <select id="wfCB" onchange="refreshWorkflowRates(true)"></select>
+          </div>
+          <div class="wf-field">
+            <label>Auditee</label>
+            <select id="wfAuditee" onchange="filterWorkflowSitesByAuditee(); refreshWorkflowRates(true);"></select>
+          </div>
+          <div class="wf-field" style="grid-column: span 2;">
+            <label>Site to be Audited</label>
+            <select id="wfSite" onchange="refreshWorkflowRates(true)"></select>
+          </div>
+          <div class="wf-field">
+            <label>Audit Program</label>
+            <select id="wfProgram" onchange="refreshWorkflowRates(true)"></select>
+          </div>
+          <div class="wf-field">
+            <label>Audit Type</label>
+            <select id="wfAuditType"></select>
+          </div>
+          <div class="wf-field">
+            <label>Announcement</label>
+            <select id="wfAnnouncement"></select>
+          </div>
+          <div class="wf-field">
+            <label>Status / Project Nr</label>
+            <div style="display:flex;gap:0.4rem;">
+              <select id="wfStatus" style="width:48%;">
+                <option value="Pending">Pending</option>
+                <option value="Confirmed">Confirmed</option>
+                <option value="Complete">Complete</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+              <input type="text" id="wfProjectNr" placeholder="Project Nr" style="width:52%;">
+            </div>
+          </div>
+          <div class="wf-field">
+            <label>Audit Due / Deadline</label>
+            <input type="date" id="wfDeadline">
+          </div>
+          <div class="wf-field">
+            <label>Audit Start Date</label>
+            <input type="date" id="wfStartDate">
+          </div>
+          <div class="wf-field">
+            <label>Audit End Date</label>
+            <input type="date" id="wfEndDate">
+          </div>
+          <div class="wf-field" style="min-width:0;">
+            <label>Audit Window (From / To)</label>
+            <div style="display:flex;gap:0.3rem;">
+              <input type="date" id="wfWindowFrom" title="Window From" style="min-width:0;flex:1;padding:0.22rem 0.3rem;font-size:0.76rem;">
+              <input type="date" id="wfWindowTo" title="Window To" style="min-width:0;flex:1;padding:0.22rem 0.3rem;font-size:0.76rem;">
+            </div>
+          </div>
+          <div class="wf-field" style="margin-left:0.75rem;grid-column:span 2;">
+            <label>Audit Days</label>
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <input type="number" step="0.01" min="0" id="wfAuditDays" style="width:82px;flex-shrink:0;" onchange="onAuditDaysChange()">
+              <span style="color:#dc2626;font-style:italic;font-size:0.74rem;line-height:1.2;white-space:nowrap;">(required field before any calculations can be done)</span>
+            </div>
+          </div>
+          <div class="wf-field" style="display:flex;align-items:flex-end;padding-bottom:0.28rem;">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;font-weight:600;text-transform:none;color:#0f172a;cursor:pointer;margin:0;white-space:nowrap;">
+              <input type="checkbox" id="wfAuditConfirmed"> Audit Confirmed
+            </label>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.45rem;">
+          <div class="wf-tabs-bar" style="margin-bottom:0;border-bottom:none;">
+            <button type="button" class="wf-tab-btn active" data-wf-tab="wfTabDetails" onclick="switchWorkflowTab('wfTabDetails')">Audit Details &amp; Distances</button>
+            <button type="button" class="wf-tab-btn" data-wf-tab="wfTabCostings" onclick="switchWorkflowTab('wfTabCostings')">Smart Costings</button>
+            <button type="button" class="wf-tab-btn" data-wf-tab="wfTabQuote" onclick="switchWorkflowTab('wfTabQuote')">Quote Builder</button>
+            <button type="button" class="wf-tab-btn" data-wf-tab="wfTabMore" onclick="switchWorkflowTab('wfTabMore')">Follow-Ups, Links &amp; Notes</button>
+          </div>
+        </div>
+
+        <!-- TAB 1: Audit Details & Google Maps Distances -->
+        <div id="wfTabDetails" class="wf-tab-pane">
+          <div class="wf-core-grid" style="background:#fff;">
+            <div class="wf-field">
+              <label>Single / Multi Prog</label>
+              <select id="wfSingleMultiProg"><option value="Single">Single</option><option value="Multi">Multi</option></select>
+            </div>
+            <div class="wf-field">
+              <label>Single / Multi Site</label>
+              <select id="wfSingleMultiSite"><option value="Single">Single</option><option value="Multi">Multi</option></select>
+            </div>
+            <div class="wf-field">
+              <label>Nr of Sites</label>
+              <input type="number" id="wfNrSites" min="1">
+            </div>
+            <div class="wf-field">
+              <label>Nr of Workers</label>
+              <input type="number" id="wfNrWorkers" min="0">
+            </div>
+            <div class="wf-field">
+              <label>Mandays Required</label>
+              <input type="number" step="0.5" id="wfMandaysReq">
+            </div>
+            <div class="wf-field">
+              <label>Total Mandays</label>
+              <input type="number" step="0.5" id="wfTotalMandays">
+            </div>
+            <div class="wf-field">
+              <label>Auditor 1</label>
+              <select id="wfAuditor1" onchange="onAuditorDropdownChange()"></select>
+            </div>
+            <div class="wf-field">
+              <label>Auditor 2</label>
+              <select id="wfAuditor2" onchange="onAuditorDropdownChange()"></select>
+            </div>
+            <div class="wf-field">
+              <label>Auditor 3</label>
+              <select id="wfAuditor3" onchange="onAuditorDropdownChange()"></select>
+            </div>
+            <div class="wf-field">
+              <label>Witness Auditor</label>
+              <select id="wfWitnessAuditor"></select>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem;">
+            <h4 style="margin:0;">Driving Distances &amp; Auditor Onboarding</h4>
+            <button type="button" id="btnCalcDistances" class="btn-primary" style="background:#001429;border-color:#001429;color:#ffffff;padding:0.45rem 0.9rem;border-radius:6px;font-weight:600;cursor:pointer;" onclick="calculateWorkflowDistances()">
+              Update Onboarding &amp; Calculate Distances
+            </button>
+          </div>
+          <div class="data-table-container" style="max-height:300px;overflow:auto;">
+            <table class="data-table compact-audits-table">
+              <thead>
+                <tr>
+                  <th>Auditor</th>
+                  <th>City</th>
+                  <th>Country</th>
+                  <th style="text-align:center;">Onboarded Internally</th>
+                  <th style="text-align:center;">Onboarded CB &amp; Program</th>
+                  <th style="text-align:right;">Distance (km)</th>
+                  <th>Select as Auditor</th>
+                  <th style="text-align:center;">Will Drive</th>
+                </tr>
+              </thead>
+              <tbody id="wfDistancesTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 2: Smart Costings -->
+        <div id="wfTabCostings" class="wf-tab-pane" style="display:none;">
+          <div id="wfRatesBanner" class="wf-rates-banner"></div>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.65rem;margin-bottom:0.75rem;">
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+              <button type="button" class="btn-primary" style="background:#10b981;border-color:#10b981;" onclick="autoCalculateWorkflowCosts()">Auto-Calculate Costs</button>
+              <button type="button" class="btn-secondary" onclick="addOtherCostRow()">+ Add 'Other' Charge</button>
+            </div>
+            <div id="wfCostTotalsBar" class="wf-totals-bar" style="flex:1;margin-bottom:0;padding:0.42rem 0.85rem;"></div>
+          </div>
+          <div id="wfCostingsContainer"></div>
+        </div>
+
+        <!-- TAB 3: Quote Builder -->
+        <div id="wfTabQuote" class="wf-tab-pane" style="display:none;">
+          <div class="wf-core-grid wf-quote-compact-grid">
+            <div class="wf-field">
+              <label>Quote Status</label>
+              <select id="wfQuoteStatus">
+                <option value="Preparing">Preparing</option>
+                <option value="Auth. Requested">Auth. Requested</option>
+                <option value="Authorised">Authorised</option>
+                <option value="Sent to Client">Sent to Client</option>
+                <option value="Accepted">Accepted</option>
+                <option value="Declined">Declined</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="wf-field"><label>Quotation Number</label><input type="text" id="wfQuoteRef"></div>
+            <div class="wf-field"><label>Your Reference</label><input type="text" id="wfQuoteYourRef"></div>
+            <div class="wf-field"><label>PO Number</label><input type="text" id="wfQuotePO"></div>
+            <div class="wf-field"><label>Valid Till</label><input type="date" id="wfQuoteValidTo"></div>
+            <div class="wf-field"><label>Quote Sent Date</label><input type="date" id="wfQuoteSentDate"></div>
+            <div class="wf-field"><label>Outcome Date</label><input type="date" id="wfQuoteOutcomeDate"></div>
+            <div class="wf-field"><label>Discount (%)</label><input type="number" step="0.5" id="wfQuoteDiscount" onchange="recalcQuoteTotals()"></div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.4rem;">
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+              <button type="button" class="btn-primary" style="background:#001429;border-color:#001429;color:#ffffff;padding:0.35rem 0.75rem;border-radius:6px;font-weight:600;cursor:pointer;font-size:0.82rem;" onclick="pullQuoteFromCostings()">Pull from Costings</button>
+              <button type="button" class="btn-secondary" style="padding:0.35rem 0.7rem;font-size:0.82rem;" onclick="addQuoteLineItem()">+ Add Line Item</button>
+              <button type="button" id="btnPreviewQuote" class="btn-secondary" style="padding:0.35rem 0.7rem;font-size:0.82rem;" onclick="previewWorkflowQuote()">Preview / Print Quote</button>
+              <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;margin-left:0.35rem;cursor:pointer;">
+                <input type="checkbox" id="wfHideAuditorNameQuote"> Hide Auditor Name(s) on Quote
+              </label>
+            </div>
+            <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;cursor:pointer;">
+              <input type="checkbox" id="wfNoAutoUpdateQuote"> Don't Auto-Update from Costings
+            </label>
+          </div>
+          <div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;margin-bottom:0.45rem;">
+            <button type="button" class="btn-secondary" style="padding:0.28rem 0.65rem;font-size:0.8rem;" onclick="setQuoteStatusAction('Auth. Requested')">Request Auth.</button>
+            <button type="button" class="btn-secondary" style="padding:0.28rem 0.65rem;font-size:0.8rem;" onclick="setQuoteStatusAction('Authorised')">Authorise</button>
+            <button type="button" class="btn-secondary" style="padding:0.28rem 0.65rem;font-size:0.8rem;" onclick="setQuoteStatusAction('Sent to Client')">Sent to CB</button>
+            <button type="button" class="btn-secondary" style="padding:0.28rem 0.65rem;font-size:0.8rem;" onclick="setQuoteStatusAction('Accepted')">Accepted</button>
+            <button type="button" class="btn-secondary" style="padding:0.28rem 0.65rem;font-size:0.8rem;" onclick="setQuoteStatusAction('Declined')">Declined</button>
+          </div>
+
+          <div id="wfQuoteTotalsBox" class="wf-totals-bar" style="padding:0.4rem 0.8rem;margin-bottom:0.5rem;"></div>
+          <datalist id="wfProductCodesList"></datalist>
+          <div class="data-table-container" style="max-height:360px;overflow:auto;">
+            <table class="data-table compact-audits-table wf-quote-tx-table">
+              <thead>
+                <tr>
+                  <th>Ord</th>
+                  <th>Qty</th>
+                  <th>Unit</th>
+                  <th>Category</th>
+                  <th>Code</th>
+                  <th>Tegenrekening</th>
+                  <th>Description on Quote</th>
+                  <th style="text-align:right;">Unit Price (€)</th>
+                  <th style="text-align:right;">VAT %</th>
+                  <th style="text-align:right;">Line Total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="wfQuoteTxBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 4: Follow-Ups, Links & Notes -->
+        <div id="wfTabMore" class="wf-tab-pane" style="display:none;">
+          <div class="wf-core-grid" style="background:#fff;">
+            <div class="wf-field"><label>Follow-Up Audit Required</label><input type="text" id="wfFollowUpAudit" placeholder="e.g. Yes / No"></div>
+            <div class="wf-field"><label>Desktop Audit Required</label><input type="text" id="wfFollowUpDesktop" placeholder="e.g. Yes / No"></div>
+            <div class="wf-field"><label>Purchase Order Nr</label><input type="text" id="wfPONr"></div>
+            <div class="wf-field">
+              <label>Invoicing</label>
+              <div style="display:flex;gap:0.4rem;align-items:center;">
+                <label style="display:flex;align-items:center;gap:0.25rem;margin:0;text-transform:none;"><input type="checkbox" id="wfInvoiced"> Invoiced</label>
+                <input type="text" id="wfInvNr" placeholder="Inv Nr">
+                <input type="number" step="0.01" id="wfInvAmt" placeholder="Inv Amt">
+              </div>
+            </div>
+            <div class="wf-field"><label>SharePoint Link</label><input type="text" id="wfLinkSharepoint"></div>
+            <div class="wf-field"><label>CertIQ Link</label><input type="text" id="wfLinkCertIQ"></div>
+            <div class="wf-field"><label>Certificate Link</label><input type="text" id="wfLinkCertificate"></div>
+            <div class="wf-field"><label>FSSC Portal Link</label><input type="text" id="wfLinkFSSC"></div>
+            <div class="wf-field" style="grid-column: span 2;"><label>Email Quote Request Details</label><textarea id="wfEmailDetails" rows="3"></textarea></div>
+            <div class="wf-field" style="grid-column: span 2;"><label>Quote Additional Comments</label><textarea id="wfQuoteAdditComments" rows="3"></textarea></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quote Preview Popup Modal -->
+  <div id="quotePreviewModal" class="modal-overlay" style="display: none; z-index: 1200;">
+    <div class="modal-content wf-modal-content" style="max-width: 960px; width: 92vw; height: 88vh;">
+      <div class="wf-modal-header" style="padding: 0.65rem 1rem;">
+        <h3 style="margin:0;font-size:1.05rem;">Quote Preview</h3>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button type="button" class="btn-primary" style="background:#10b981;border-color:#10b981;color:#fff;padding:0.35rem 0.85rem;border-radius:6px;font-weight:600;cursor:pointer;" onclick="printQuotePreviewFrame()">Print / Save PDF</button>
+          <button type="button" class="modal-close" style="color:#fff;" onclick="closeQuotePreviewModal()">&times;</button>
+        </div>
+      </div>
+      <iframe id="quotePreviewFrame" style="flex:1;width:100%;border:none;background:#fff;"></iframe>
+    </div>
+  </div>
+  <script src="/static/workflows.js?v={{ cache_buster }}"></script>
 </body>
 </html>

@@ -57,6 +57,12 @@ try:
 except Exception as e:
     print(f"Error loading customer portal router: {e}")
 
+try:
+    from workflows_router import workflows_router
+    app.include_router(workflows_router)
+except Exception as e:
+    print(f"Error loading workflows router: {e}")
+
 # DB Connection Helper
 from db_config import DB_CONN_STR
 
@@ -566,6 +572,36 @@ class CertificationBodySchema(BaseModel):
     Billing_Physical_Address: Optional[str] = None
     Billing_Country: Optional[str] = None
     Billing_Contact_Name: Optional[str] = None
+class CBProgramSchema(BaseModel):
+    ID: Optional[int] = None
+    Program: Optional[str] = None
+    Mandays: Optional[float] = None
+    Manday_Rate: Optional[float] = None
+    Report_Percentage: Optional[float] = None
+
+class CBOnboardedAuditorSchema(BaseModel):
+    AuditorID: int
+    Status: Optional[str] = "Not Onboarded"
+
+class CBAuditorProgramSchema(BaseModel):
+    AuditorID: int
+    Program: str
+    Status: Optional[str] = "Compliant"
+
+class CBPONumberSchema(BaseModel):
+    ID: Optional[int] = None
+    PONumber: Optional[str] = None
+    FromDate: Optional[str] = None
+    ToDate: Optional[str] = None
+
+class CertificationBodySchema(BaseModel):
+    Status: Optional[str] = 'Active'
+    Company_Name: str
+    Customer_Number: Optional[str] = None
+    Code: Optional[str] = None
+    Billing_Physical_Address: Optional[str] = None
+    Billing_Country: Optional[str] = None
+    Billing_Contact_Name: Optional[str] = None
     Billing_Email: Optional[str] = None
     Billing_Tel: Optional[str] = None
     Comments: Optional[str] = None
@@ -576,6 +612,10 @@ class CertificationBodySchema(BaseModel):
     Report_Fee: Optional[float] = None
     Quote_Terms: Optional[str] = None
     contacts: Optional[List[ContactSchema]] = []
+    programs: Optional[List[CBProgramSchema]] = None
+    auditors_onboarded: Optional[List[CBOnboardedAuditorSchema]] = None
+    auditor_programs: Optional[List[CBAuditorProgramSchema]] = None
+    po_numbers: Optional[List[CBPONumberSchema]] = None
 
 @app.get("/api/certification-bodies")
 async def get_certification_bodies(
@@ -618,6 +658,46 @@ async def get_certification_body_detail(cb_id: int, request: Request):
     cb_detail = cb_rows[0]
     contacts = execute_query("SELECT * FROM dbo.tbl_CertBod_Contacts WHERE CBID = ? ORDER BY ID ASC", (cb_id,))
     cb_detail["contacts"] = contacts
+    cb_detail["programs"] = execute_query("SELECT * FROM dbo.tbl_CertBod_Programs WHERE CBID = ? ORDER BY Program ASC", (cb_id,))
+    cb_detail["auditors_onboarded"] = execute_query("""
+        SELECT a.AuditorID,
+               RTRIM(LTRIM(ISNULL(a.First_Name, '') + ' ' + ISNULL(a.Last_Name, ''))) AS Auditor_Name,
+               ISNULL(o.Status, 'Not Onboarded') AS Status
+        FROM dbo.tbl_Auditors a
+        LEFT JOIN dbo.tbl_Auditors_CBs_Onboarded o ON a.AuditorID = o.AuditorID AND o.CB = ?
+        WHERE a.Status = 'Active' OR a.Status IS NULL
+        ORDER BY a.First_Name ASC, a.Last_Name ASC
+    """, (cb_id,))
+    cb_detail["auditor_programs"] = execute_query("""
+        SELECT ap.AuditorID,
+               RTRIM(LTRIM(ISNULL(a.First_Name, '') + ' ' + ISNULL(a.Last_Name, ''))) AS Auditor_Name,
+               ap.Program,
+               ISNULL(ap.Status, 'Compliant') AS Status,
+               ap.Accred_Expiry
+        FROM dbo.tbl_Auditor_Programs ap
+        JOIN dbo.tbl_Auditors a ON ap.AuditorID = a.AuditorID
+        WHERE ap.CertificationBody = ?
+        ORDER BY a.First_Name ASC, a.Last_Name ASC, ap.Program ASC
+    """, (cb_id,))
+    cb_detail["po_numbers"] = execute_query("SELECT * FROM dbo.tbl_CertBodies_PONumbers WHERE CBID = ? ORDER BY ID DESC", (cb_id,))
+    cb_detail["audit_history"] = execute_query("""
+        SELECT wf.WFID, wf.Project_Nr, wf.Status, ISNULL(aud.Company_Name, '-') AS Auditee_Name,
+               wf.Audit_Program, wf.Audit_Type, wf.Audit_Start_Date, wf.Audit_End_Date,
+               wf.Total_Mandays, wf.Amount_Quoted
+        FROM dbo.tbl_WorkflowProcess wf
+        LEFT JOIN dbo.tbl_Auditees aud ON wf.AuditeeID = aud.ID
+        WHERE wf.Certification_Body = ?
+        ORDER BY wf.WFID DESC
+    """, (cb_id,))
+    cb_detail["quote_history"] = execute_query("""
+        SELECT q.QuoteID, q.WFID, q.QuoteRef, q.Quote_Status, ISNULL(aud.Company_Name, '-') AS Auditee_Name,
+               q.Quote_Created, q.Quote_ValidTo, q.Quote_SubTotal, q.Quote_Total
+        FROM dbo.tbl_Quoting q
+        LEFT JOIN dbo.tbl_Auditees aud ON q.AuditeeID = aud.ID
+        WHERE q.CB = ?
+        ORDER BY q.QuoteID DESC
+    """, (cb_id,))
+    cb_detail["all_programs"] = [r["Program"] for r in execute_query("SELECT Program FROM dbo.tbl_AuditPrograms WHERE Program IS NOT NULL ORDER BY Program ASC")]
     return cb_detail
 
 @app.post("/api/certification-bodies")
@@ -722,6 +802,41 @@ async def update_certification_body(cb_id: int, cb: CertificationBodySchema, req
         if removed_ids:
             delete_query = f"DELETE FROM dbo.tbl_CertBod_Contacts WHERE ID IN ({','.join(['?']*len(removed_ids))}) AND CBID = ?"
             cursor.execute(delete_query, (*list(removed_ids), cb_id))
+
+        if cb.programs is not None:
+            cursor.execute("DELETE FROM dbo.tbl_CertBod_Programs WHERE CBID = ?", (cb_id,))
+            for p in cb.programs:
+                if p.Program:
+                    cursor.execute(
+                        "INSERT INTO dbo.tbl_CertBod_Programs (CBID, Program, Mandays, Manday_Rate, Report_Percentage) VALUES (?, ?, ?, ?, ?)",
+                        (cb_id, p.Program, p.Mandays, p.Manday_Rate, p.Report_Percentage)
+                    )
+
+        if cb.auditors_onboarded is not None:
+            cursor.execute("DELETE FROM dbo.tbl_Auditors_CBs_Onboarded WHERE CB = ?", (cb_id,))
+            for ao in cb.auditors_onboarded:
+                cursor.execute(
+                    "INSERT INTO dbo.tbl_Auditors_CBs_Onboarded (AuditorID, CB, Status) VALUES (?, ?, ?)",
+                    (ao.AuditorID, cb_id, ao.Status or "Not Onboarded")
+                )
+
+        if cb.auditor_programs is not None:
+            cursor.execute("DELETE FROM dbo.tbl_Auditor_Programs WHERE CertificationBody = ?", (cb_id,))
+            for ap in cb.auditor_programs:
+                if ap.AuditorID and ap.Program:
+                    cursor.execute(
+                        "INSERT INTO dbo.tbl_Auditor_Programs (AuditorID, CertificationBody, Program, Accred_Cert_Training_Req, Status, Evidence_Uploaded) VALUES (?, ?, ?, 0, ?, 0)",
+                        (ap.AuditorID, cb_id, ap.Program, ap.Status or "Compliant")
+                    )
+
+        if cb.po_numbers is not None:
+            cursor.execute("DELETE FROM dbo.tbl_CertBodies_PONumbers WHERE CBID = ?", (cb_id,))
+            for po in cb.po_numbers:
+                if po.PONumber:
+                    cursor.execute(
+                        "INSERT INTO dbo.tbl_CertBodies_PONumbers (CBID, PONumber, FromDate, ToDate) VALUES (?, ?, ?, ?)",
+                        (cb_id, po.PONumber, po.FromDate or None, po.ToDate or None)
+                    )
             
         conn.commit()
         return {"success": True}
