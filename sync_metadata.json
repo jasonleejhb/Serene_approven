@@ -1,9 +1,9 @@
 {
-  "last_sync": "2026-09-11T12:39:25.948575",
-  "last_sync_display": "11/09/2026 12:39:25",
-  "total_tables": 31,
-  "total_rows": 17644,
-  "duration_seconds": 7.82,
+  "last_sync": "2026-11-18T16:22:42.387364",
+  "last_sync_display": "18/11/2026 16:22:42",
+  "total_tables": 38,
+  "total_rows": 22312,
+  "duration_seconds": 7.75,
   "status": "Success",
-  "message": "Successfully synchronized 31 tables (17644 rows) in 7.82s."
+  "message": "Successfully synchronized 38 tables (22312 rows) in 7.75s."
 }

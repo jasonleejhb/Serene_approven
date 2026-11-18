@@ -63,6 +63,12 @@ try:
 except Exception as e:
     print(f"Error loading workflows router: {e}")
 
+try:
+    from agenda_router import agenda_router
+    app.include_router(agenda_router)
+except Exception as e:
+    print(f"Error loading agenda router: {e}")
+
 # DB Connection Helper
 from db_config import DB_CONN_STR
 

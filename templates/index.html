@@ -113,6 +113,12 @@
             </a>
           </li>
           <li>
+            <a href="#" class="nav-item" data-view="agenda">
+              <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+              <span>Agenda</span>
+            </a>
+          </li>
+          <li>
             <a href="#" class="nav-item" data-view="certification-bodies">
               <svg viewBox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
               <span>Certification Bodies</span>
@@ -328,6 +334,151 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <!-- AGENDA & TIMESHEETS VIEW -->
+        <section id="view-agenda" class="view-section">
+          <style>
+            .ag-subtabs { display:flex; gap:0.5rem; border-bottom:2px solid #e2e8f0; margin-bottom:0.85rem; }
+            .ag-subtab-btn { background:none; border:none; padding:0.55rem 1rem; font-weight:600; color:#64748b; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; }
+            .ag-subtab-btn.active { color:#001429; border-bottom-color:#001429; }
+            .ag-toolbar { display:flex; flex-wrap:wrap; gap:0.65rem; align-items:center; justify-content:space-between; background:#fff; padding:0.7rem 0.9rem; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:0.8rem; }
+            .ag-toolbar-group { display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center; }
+            .ag-view-mode-btn { padding:0.35rem 0.7rem; border:1px solid #cbd5e1; background:#fff; border-radius:6px; cursor:pointer; font-size:0.82rem; font-weight:600; color:#334155; }
+            .ag-view-mode-btn.active { background:#001429; color:#fff; border-color:#001429; }
+            .ag-grid-wrap { overflow:auto; max-height:calc(100vh - 280px); background:#fff; border:1px solid #cbd5e1; border-radius:8px; }
+            .ag-grid-table { border-collapse:separate; border-spacing:0; width:max-content; min-width:100%; font-size:0.78rem; }
+            .ag-grid-table th, .ag-grid-table td { border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; vertical-align:top; }
+            .ag-aud-col { position:sticky; left:0; z-index:2; background:#fff; min-width:190px; max-width:210px; padding:0.45rem 0.65rem; border-right:2px solid #cbd5e1 !important; }
+            .ag-aud-hdr { z-index:4 !important; background:#f8fafc !important; font-weight:700; color:#001429; vertical-align:middle !important; }
+            .ag-aud-name { font-weight:700; color:#0f172a; font-size:0.82rem; }
+            .ag-aud-sub { font-size:0.72rem; color:#64748b; }
+            .ag-day-hdr { position:sticky; top:0; z-index:3; background:#f8fafc; min-width:74px; max-width:96px; padding:0.35rem 0.25rem; text-align:center; font-weight:600; color:#475569; }
+            .ag-mode-week .ag-day-hdr, .ag-mode-week .ag-cell { min-width:130px; }
+            .ag-mode-day .ag-day-hdr, .ag-mode-day .ag-cell { min-width:360px; }
+            .ag-day-num { font-size:0.88rem; font-weight:700; color:#0f172a; }
+            .ag-wknd { background:#f8fafc !important; }
+            .ag-today { background:#eff6ff !important; }
+            .ag-cell { min-width:74px; max-width:96px; min-height:46px; padding:3px; cursor:pointer; }
+            .ag-cell:hover { background:#f1f5f9; }
+            .ag-block { display:flex; align-items:flex-start; gap:4px; padding:3px 5px; border-radius:4px; margin-bottom:3px; font-size:0.71rem; line-height:1.25; cursor:pointer; overflow:hidden; border:1px solid transparent; }
+            .ag-blk-audit { background:#fee2e2; color:#7f1d1d; border-color:#fecaca; }
+            .ag-blk-report { background:#dbeafe; color:#1e3a8a; border-color:#bfdbfe; }
+            .ag-blk-custom { background:#ede9fe; color:#4c1d95; border-color:#ddd6fe; }
+            .ag-blk-unconfirmed { background:#fef3c7 !important; color:#78350f !important; border-color:#fde68a !important; }
+            .ag-dot { display:inline-block; width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:2px; }
+            .ag-blk-txt { overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+            .ag-hover-tooltip { position:fixed; z-index:9999; display:none; max-width:390px; background:#1e1b4b; color:#f8fafc; padding:0.75rem 0.9rem; border-radius:8px; box-shadow:0 12px 30px rgba(0,0,0,0.35); font-size:0.79rem; line-height:1.45; pointer-events:none; }
+            .ag-tt-title { font-weight:700; font-size:0.86rem; margin-bottom:0.3rem; color:#fff; }
+            .ag-tt-status { display:flex; align-items:center; gap:6px; font-weight:600; margin-bottom:0.45rem; color:#e2e8f0; }
+            .ag-tt-grid div { margin-bottom:0.2rem; color:#cbd5e1; }
+            .ag-tt-hint { margin-top:0.45rem; font-size:0.72rem; color:#93c5fd; font-style:italic; }
+            .ts-split { display:grid; grid-template-columns:1.25fr 1fr; gap:1rem; }
+            .ts-day-card { background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:0.65rem; overflow:hidden; }
+            .ts-day-hdr { display:flex; justify-content:space-between; padding:0.45rem 0.75rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; font-size:0.84rem; color:#0f172a; }
+            .ts-entry-row { display:flex; justify-content:space-between; align-items:center; gap:0.6rem; padding:0.5rem 0.75rem; border-bottom:1px solid #f1f5f9; font-size:0.83rem; }
+            .ts-entry-row:last-child { border-bottom:none; }
+            @media (max-width: 960px) { .ts-split { grid-template-columns:1fr; } }
+          </style>
+
+          <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+            <div>
+              <h2 class="page-title" style="margin:0;">Agenda &amp; Resource Schedule</h2>
+              <p class="page-subtitle" style="margin:0.2rem 0 0 0;">Audit schedule, report writing allocations, leave &amp; timesheets</p>
+            </div>
+            <div style="display:flex;gap:0.75rem;align-items:center;font-size:0.78rem;color:#475569;">
+              <span><span class="ag-dot" style="background:#10b981;"></span> Confirmed / Complete</span>
+              <span><span class="ag-dot" style="background:#f59e0b;"></span> Unconfirmed (Pending)</span>
+              <span><span class="ag-dot" style="background:#3b82f6;"></span> Leave / Other</span>
+            </div>
+          </div>
+
+          <div class="ag-subtabs">
+            <button type="button" class="ag-subtab-btn active" data-ag-tab="schedule" onclick="switchAgendaSubTab('schedule')">Schedule</button>
+            <button type="button" class="ag-subtab-btn" data-ag-tab="timesheets" onclick="switchAgendaSubTab('timesheets')">Timesheets</button>
+            <button type="button" class="ag-subtab-btn" data-ag-tab="audits" onclick="switchAgendaSubTab('audits')">Audits</button>
+            <button type="button" class="ag-subtab-btn" data-ag-tab="report-writing" onclick="switchAgendaSubTab('report-writing')">Report Writing</button>
+          </div>
+
+          <!-- SUBTAB 1: SCHEDULE -->
+          <div id="agPane-schedule" class="ag-subtab-pane">
+            <div class="ag-toolbar">
+              <div class="ag-toolbar-group">
+                <button type="button" class="btn-secondary" onclick="shiftAgendaPeriod(-1)">&lsaquo; Prev</button>
+                <button type="button" class="btn-secondary" onclick="shiftAgendaPeriod(0)">Today</button>
+                <button type="button" class="btn-secondary" onclick="shiftAgendaPeriod(1)">Next &rsaquo;</button>
+                <strong id="agPeriodLabel" style="margin-left:0.4rem;color:#001429;min-width:120px;"></strong>
+              </div>
+              <div class="ag-toolbar-group">
+                <label style="font-size:0.8rem;color:#475569;">From: <input type="date" id="agFromDate" onchange="loadAgendaData()" style="padding:0.25rem 0.4rem;border:1px solid #cbd5e1;border-radius:4px;"></label>
+                <label style="font-size:0.8rem;color:#475569;">To: <input type="date" id="agToDate" onchange="loadAgendaData()" style="padding:0.25rem 0.4rem;border:1px solid #cbd5e1;border-radius:4px;"></label>
+                <select id="agAuditorFilter" onchange="loadAgendaData()" style="padding:0.3rem 0.5rem;border:1px solid #cbd5e1;border-radius:4px;font-size:0.82rem;">
+                  <option value="">All Active Auditors</option>
+                </select>
+              </div>
+              <div class="ag-toolbar-group">
+                <button type="button" class="ag-view-mode-btn active" data-mode="month" onclick="setAgendaViewMode('month')">30-Day / Month</button>
+                <button type="button" class="ag-view-mode-btn" data-mode="week" onclick="setAgendaViewMode('week')">Week</button>
+                <button type="button" class="ag-view-mode-btn" data-mode="day" onclick="setAgendaViewMode('day')">Day</button>
+                <button type="button" class="btn-primary" style="background:#001429;border-color:#001429;color:#fff;" onclick="openNewAgendaEventModal(null, '')">+ New Event</button>
+              </div>
+            </div>
+            <div style="font-size:0.76rem;color:#64748b;margin-bottom:0.45rem;">Tip: Hover any block for full audit details. Double-click an audit/report block to open its workflow, or double-click an empty date cell to add leave/other events.</div>
+            <div id="agScheduleGridWrap" class="ag-grid-wrap"></div>
+          </div>
+
+          <!-- SUBTAB 2: TIMESHEETS -->
+          <div id="agPane-timesheets" class="ag-subtab-pane" style="display:none;">
+            <div class="ag-toolbar">
+              <div class="ag-toolbar-group">
+                <button type="button" class="btn-secondary" onclick="shiftTimesheetWeek(-1)">&lsaquo; Prev Week</button>
+                <button type="button" class="btn-secondary" onclick="shiftTimesheetWeek(0)">This Week</button>
+                <button type="button" class="btn-secondary" onclick="shiftTimesheetWeek(1)">Next Week &rsaquo;</button>
+              </div>
+              <div class="ag-toolbar-group">
+                <label style="font-size:0.8rem;color:#475569;">From: <input type="date" id="tsFromDate" onchange="loadTimesheetsData()" style="padding:0.25rem 0.4rem;border:1px solid #cbd5e1;border-radius:4px;"></label>
+                <label style="font-size:0.8rem;color:#475569;">To: <input type="date" id="tsToDate" onchange="loadTimesheetsData()" style="padding:0.25rem 0.4rem;border:1px solid #cbd5e1;border-radius:4px;"></label>
+                <select id="tsAuditorFilter" onchange="loadTimesheetsData()" style="padding:0.3rem 0.5rem;border:1px solid #cbd5e1;border-radius:4px;font-size:0.82rem;">
+                  <option value="">All Auditors</option>
+                </select>
+                <select id="tsCBFilter" onchange="loadTimesheetsData()" style="padding:0.3rem 0.5rem;border:1px solid #cbd5e1;border-radius:4px;font-size:0.82rem;">
+                  <option value="">All Certification Bodies</option>
+                </select>
+              </div>
+              <div class="ag-toolbar-group">
+                <button type="button" class="btn-secondary" onclick="syncTimesheetsFromCostings()">Sync from Costings</button>
+                <button type="button" class="btn-primary" style="background:#001429;border-color:#001429;color:#fff;" onclick="openNewTimesheetModal()">+ Log Time</button>
+              </div>
+            </div>
+            <div class="ts-split">
+              <div id="tsEntriesPanel"></div>
+              <div id="tsComparisonPanel" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:0.85rem;align-self:start;"></div>
+            </div>
+          </div>
+
+          <!-- SUBTAB 3: AUDITS -->
+          <div id="agPane-audits" class="ag-subtab-pane" style="display:none;">
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr><th>Status</th><th>Auditor</th><th>Dates</th><th>Auditee</th><th>Certification Body</th><th>Project Nr</th><th>Program</th></tr>
+                </thead>
+                <tbody id="agAuditsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- SUBTAB 4: REPORT WRITING -->
+          <div id="agPane-report-writing" class="ag-subtab-pane" style="display:none;">
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr><th>Status</th><th>Lead Auditor</th><th>Allocated Date (Next Weekday)</th><th>Auditee</th><th>Certification Body</th><th>Project Nr</th></tr>
+                </thead>
+                <tbody id="agReportWritingTableBody"></tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -1136,6 +1287,8 @@
             loadCBList();
           } else if (viewName === 'auditors') {
             loadAuditorsList();
+          } else if (viewName === 'agenda') {
+            openAgendaSection(agendaSubTab || 'schedule');
           }
         }
 
@@ -3786,11 +3939,11 @@
           </div>
           <div class="wf-field">
             <label>Audit Start Date</label>
-            <input type="date" id="wfStartDate">
+            <input type="date" id="wfStartDate" onchange="refreshTestCostingAvailability()">
           </div>
           <div class="wf-field">
             <label>Audit End Date</label>
-            <input type="date" id="wfEndDate">
+            <input type="date" id="wfEndDate" onchange="refreshTestCostingAvailability()">
           </div>
           <div class="wf-field" style="min-width:0;">
             <label>Audit Window (From / To)</label>
@@ -3924,6 +4077,7 @@
               <thead>
                 <tr>
                   <th style="cursor:pointer;user-select:none;" onclick="sortTestCostingBy('auditor')">Auditor <span class="wf-sort-ind" data-sort="auditor"></span></th>
+                  <th style="text-align:center;">Availability</th>
                   <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('distance')">Distance <span class="wf-sort-ind" data-sort="distance"></span></th>
                   <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('duration')">Drive Time <span class="wf-sort-ind" data-sort="duration"></span></th>
                   <th style="text-align:center;">Will Drive</th>
@@ -4064,6 +4218,94 @@
       <iframe id="quotePreviewFrame" style="flex:1;width:100%;border:none;background:#fff;"></iframe>
     </div>
   </div>
+  <!-- Agenda Non-Audit Event Modal -->
+  <div id="agendaEventModal" class="modal-overlay" style="display: none; z-index: 1200;">
+    <div class="modal-content" style="max-width: 480px; width: 92vw; padding: 1.25rem; background: #ffffff; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;">
+        <h3 id="agEvtModalTitle" style="margin:0;">New Agenda Event</h3>
+        <button type="button" class="modal-close" onclick="closeAgendaEventModal()">&times;</button>
+      </div>
+      <input type="hidden" id="agEvtId">
+      <div style="display:grid;gap:0.65rem;">
+        <div class="wf-field">
+          <label>Event Type</label>
+          <select id="agEvtType">
+            <option value="Annual Leave">Annual Leave</option>
+            <option value="Sick Leave">Sick Leave</option>
+            <option value="Public Holiday">Public Holiday</option>
+            <option value="Meeting">Internal Meeting</option>
+            <option value="Training">Training</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="wf-field">
+          <label>Title / Description</label>
+          <input type="text" id="agEvtTitle" placeholder="e.g. Annual Leave">
+        </div>
+        <div class="wf-field">
+          <label>Auditor / Resource</label>
+          <select id="agEvtAuditor"></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 90px;gap:0.5rem;">
+          <div class="wf-field"><label>Start Date</label><input type="date" id="agEvtStart"></div>
+          <div class="wf-field"><label>End Date</label><input type="date" id="agEvtEnd"></div>
+          <div class="wf-field"><label>Hrs/Day</label><input type="number" step="0.5" id="agEvtHours" value="8"></div>
+        </div>
+        <div class="wf-field">
+          <label>Notes</label>
+          <textarea id="agEvtNotes" rows="2"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:1rem;">
+        <button type="button" id="btnDeleteAgendaEvt" class="btn-secondary" style="color:#b91c1c;border-color:#fca5a5;display:none;" onclick="deleteAgendaEventModal()">Delete</button>
+        <div style="display:flex;gap:0.5rem;margin-left:auto;">
+          <button type="button" class="btn-secondary" onclick="closeAgendaEventModal()">Cancel</button>
+          <button type="button" class="btn-primary" style="background:#001429;border-color:#001429;color:#fff;" onclick="saveAgendaEventModal()">Save Event</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timesheet Log Entry Modal -->
+  <div id="tsEntryModal" class="modal-overlay" style="display: none; z-index: 1200;">
+    <div class="modal-content" style="max-width: 460px; width: 92vw; padding: 1.25rem; background: #ffffff; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;">
+        <h3 style="margin:0;">Log Timesheet Entry</h3>
+        <button type="button" class="modal-close" onclick="closeTimesheetModal()">&times;</button>
+      </div>
+      <div style="display:grid;gap:0.65rem;">
+        <div class="wf-field"><label>Auditor</label><select id="tsModalAuditor"></select></div>
+        <div class="wf-field"><label>Certification Body (Optional)</label><select id="tsModalCB"></select></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+          <div class="wf-field">
+            <label>Category</label>
+            <select id="tsModalCategory">
+              <option value="Audit">Audit</option>
+              <option value="Report Writing">Report Writing</option>
+              <option value="Travel">Travel</option>
+              <option value="Internal / Meeting">Internal / Meeting</option>
+              <option value="Leave">Leave</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="wf-field"><label>Date</label><input type="date" id="tsModalDate"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:120px 1fr;gap:0.5rem;align-items:end;">
+          <div class="wf-field"><label>Hours</label><input type="number" step="0.25" min="0.25" id="tsModalHours" value="8"></div>
+          <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.84rem;padding-bottom:0.35rem;cursor:pointer;">
+            <input type="checkbox" id="tsModalBillable" checked> Billable
+          </label>
+        </div>
+        <div class="wf-field"><label>Description</label><input type="text" id="tsModalDesc" placeholder="Audit / task details"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1rem;">
+        <button type="button" class="btn-secondary" onclick="closeTimesheetModal()">Cancel</button>
+        <button type="button" class="btn-primary" style="background:#001429;border-color:#001429;color:#fff;" onclick="saveTimesheetModal()">Save Entry</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/workflows.js?v={{ cache_buster }}"></script>
+  <script src="/static/agenda.js?v={{ cache_buster }}"></script>
 </body>
 </html>

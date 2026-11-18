@@ -96,14 +96,18 @@ def sync_access_to_sql(logger_fn=print):
 
             t0 = time.time()
 
-            # Get column list in correct ordinal position
+            # Get column list in correct ordinal position, intersected with Access columns
             sql_cursor.execute(f"""
                 SELECT COLUMN_NAME 
                 FROM INFORMATION_SCHEMA.COLUMNS 
                 WHERE TABLE_NAME='{tbl}' 
                 ORDER BY ORDINAL_POSITION
             """)
-            cols = [row[0] for row in sql_cursor.fetchall()]
+            sql_cols = [row[0] for row in sql_cursor.fetchall()]
+            acc_cols = {c.column_name.lower() for c in acc_cursor.columns(table=tbl)}
+            cols = [c for c in sql_cols if c.lower() in acc_cols]
+            if not cols:
+                continue
             col_list_str = ", ".join([f"[{c}]" for c in cols])
             placeholders = ", ".join(["?" for _ in cols])
 

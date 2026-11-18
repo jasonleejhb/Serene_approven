@@ -55,13 +55,14 @@ function switchWorkflowTab(tabId) {
     p.style.display = (p.id === tabId) ? 'block' : 'none';
   });
   if (tabId === 'wfTabTestCosting') {
-    renderTestCostingTab();
+    refreshTestCostingAvailability();
   }
 }
 
 let wfInitialSnapshot = null;
 let wfTestFlightCosts = {};
 let wfTestSort = { col: 'total', dir: 'asc' };
+let wfTestAvailability = null;
 
 function closeWorkflowModal(force = false) {
   if (!force && wfInitialSnapshot !== null) {
@@ -81,6 +82,7 @@ async function openWorkflowModal(wfid = null) {
   wfInitialSnapshot = null;
   wfTestFlightCosts = {};
   wfTestSort = { col: 'total', dir: 'asc' };
+  wfTestAvailability = null;
   const modal = document.getElementById('workflowModal');
   if (!modal) return;
   modal.style.display = 'flex';
@@ -754,6 +756,29 @@ function _updateTestCostSummary(computed, minTotal) {
   }
 }
 
+async function refreshTestCostingAvailability() {
+  const s = document.getElementById('wfStartDate')?.value;
+  const e = document.getElementById('wfEndDate')?.value;
+  if (!s || !e) {
+    wfTestAvailability = null;
+    renderTestCostingTab();
+    return;
+  }
+  try {
+    const qs = new URLSearchParams({ start: s, end: e });
+    if (wfCurrentId) qs.set('exclude_wfid', wfCurrentId);
+    const resp = await fetch(`/api/agenda/availability?${qs.toString()}`);
+    if (resp.ok) {
+      wfTestAvailability = await resp.json();
+    } else {
+      wfTestAvailability = null;
+    }
+  } catch (err) {
+    wfTestAvailability = null;
+  }
+  renderTestCostingTab();
+}
+
 function renderTestCostingTab() {
   const banner = document.getElementById('wfTestCostBanner');
   const summary = document.getElementById('wfTestCostSelectionSummary');
@@ -784,24 +809,24 @@ function renderTestCostingTab() {
   });
 
   if (!wfRates) {
-    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#64748b;padding:1.25rem;">Loading rates...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;color:#64748b;padding:1.25rem;">Loading rates...</td></tr>';
     return;
   }
   if (!(days > 0)) {
     if (summary) summary.innerHTML = '<span style="color:#dc2626;font-weight:600;">Enter Audit Days above to simulate costs across all auditors.</span>';
-    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#dc2626;padding:1.25rem;">Please enter <strong>Audit Days</strong> in the header to calculate projected costs.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;color:#dc2626;padding:1.25rem;">Please enter <strong>Audit Days</strong> in the header to calculate projected costs.</td></tr>';
     return;
   }
   if (!wfDistances.length) {
     if (summary) summary.innerHTML = '<span style="color:#64748b;">Select a Site to automatically calculate distances, or click Refresh Distances.</span>';
-    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#64748b;padding:1.25rem;">No auditor distances loaded yet. Select a <strong>Site to be Audited</strong> to calculate distances automatically.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;color:#64748b;padding:1.25rem;">No auditor distances loaded yet. Select a <strong>Site to be Audited</strong> to calculate distances automatically.</td></tr>';
     return;
   }
 
   const computed = _getTestCostComputedList();
   if (!computed.length) {
     if (summary) summary.innerHTML = '<span style="color:#b45309;">No fully onboarded auditors found for this CB &amp; Program. Uncheck "Only onboarded auditors" to inspect all active auditors.</span>';
-    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#64748b;padding:1.25rem;">No matching auditors. Try unchecking "Only onboarded auditors".</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;color:#64748b;padding:1.25rem;">No matching auditors. Try unchecking "Only onboarded auditors".</td></tr>';
     return;
   }
 
@@ -853,6 +878,17 @@ function renderTestCostingTab() {
       ? '<span class="status-badge complete" style="font-size:0.72rem;">Cheapest</span>'
       : `<span style="color:#b45309;font-weight:600;">+${_wfEur(delta)}</span>`;
 
+    let availHtml = '<span style="color:#94a3b8;font-size:0.76rem;" title="Capture Audit Start & End Dates to check availability">-</span>';
+    if (wfTestAvailability && document.getElementById('wfStartDate')?.value && document.getElementById('wfEndDate')?.value) {
+      const conflicts = (wfTestAvailability.conflicts && wfTestAvailability.conflicts[String(d.AuditorID)]) || [];
+      if (!conflicts.length) {
+        availHtml = '<span class="status-badge complete" style="font-size:0.7rem;">Available</span>';
+      } else {
+        const tip = conflicts.map(c => `${c.start_date}${c.end_date !== c.start_date ? '–' + c.end_date : ''}: ${c.title} (${c.status_label})`).join('\n');
+        availHtml = `<span class="status-badge" style="font-size:0.7rem;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;" title="${_wfEsc(tip)}">Busy (${conflicts.length})</span>`;
+      }
+    }
+
     return `
       <tr data-aud-id="${d.AuditorID}" class="${isSelected ? 'wf-row-selected' : (canSel ? '' : 'wf-row-muted')}" style="${isSelected ? 'background:#f0fdf4;' : ''}">
         <td>
@@ -860,6 +896,7 @@ function renderTestCostingTab() {
           <div style="font-size:0.75rem;color:#64748b;">${_wfEsc([d.City, d.Country].filter(Boolean).join(', ') || '-')}</div>
           ${leftBadges.length ? `<div style="display:flex;gap:0.25rem;flex-wrap:wrap;margin-top:2px;">${leftBadges.join('')}</div>` : ''}
         </td>
+        <td style="text-align:center;white-space:nowrap;">${availHtml}</td>
         <td style="text-align:right;font-weight:600;white-space:nowrap;">${distCell}</td>
         <td style="text-align:right;color:#334155;white-space:nowrap;">${durCell}</td>
         <td style="text-align:center;">
