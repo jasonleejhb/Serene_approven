@@ -54,9 +54,14 @@ function switchWorkflowTab(tabId) {
   document.querySelectorAll('#workflowModal .wf-tab-pane').forEach(p => {
     p.style.display = (p.id === tabId) ? 'block' : 'none';
   });
+  if (tabId === 'wfTabTestCosting') {
+    renderTestCostingTab();
+  }
 }
 
 let wfInitialSnapshot = null;
+let wfTestFlightCosts = {};
+let wfTestSort = { col: 'total', dir: 'asc' };
 
 function closeWorkflowModal(force = false) {
   if (!force && wfInitialSnapshot !== null) {
@@ -74,6 +79,8 @@ function closeWorkflowModal(force = false) {
 
 async function openWorkflowModal(wfid = null) {
   wfInitialSnapshot = null;
+  wfTestFlightCosts = {};
+  wfTestSort = { col: 'total', dir: 'asc' };
   const modal = document.getElementById('workflowModal');
   if (!modal) return;
   modal.style.display = 'flex';
@@ -200,9 +207,41 @@ async function refreshWorkflowRates(rerender = true) {
   const resp = await fetch(`/api/workflows/rates?${qs.toString()}`);
   if (resp.ok) {
     wfRates = await resp.json();
-    if (rerender) renderWorkflowRatesBanner();
+    if (rerender) {
+      renderWorkflowRatesBanner();
+      renderTestCostingTab();
+    }
   }
   return wfRates;
+}
+
+async function onWorkflowSiteChange() {
+  await refreshWorkflowRates(true);
+  const siteId = document.getElementById('wfSite')?.value;
+  if (siteId) {
+    await calculateWorkflowDistances(true);
+  } else {
+    renderTestCostingTab();
+  }
+}
+
+async function onWorkflowAuditeeChange() {
+  filterWorkflowSitesByAuditee();
+  await refreshWorkflowRates(true);
+  const siteId = document.getElementById('wfSite')?.value;
+  if (siteId) {
+    await calculateWorkflowDistances(true);
+  } else {
+    renderTestCostingTab();
+  }
+}
+
+async function onWorkflowRatesContextChange() {
+  await refreshWorkflowRates(true);
+  const siteId = document.getElementById('wfSite')?.value;
+  if (siteId) {
+    await calculateWorkflowDistances(true);
+  }
 }
 
 function bindWorkflowForm() {
@@ -280,10 +319,10 @@ function renderWorkflowRatesBanner() {
   `;
 }
 
-async function calculateWorkflowDistances() {
+async function calculateWorkflowDistances(silent = false) {
   const siteId = document.getElementById('wfSite')?.value;
   if (!siteId) {
-    alert('Please select an Auditee and Site to be Audited first.');
+    if (!silent) alert('Please select an Auditee and Site to be Audited first.');
     return;
   }
   const cbId = document.getElementById('wfCB')?.value || null;
@@ -307,8 +346,10 @@ async function calculateWorkflowDistances() {
     wfDistances = data.distances || [];
     renderWorkflowDistancesTable();
     autoCalculateWorkflowCosts(true);
+    renderTestCostingTab();
   } catch (err) {
-    alert('Distance Calculation Error: ' + err.message);
+    if (!silent) alert('Distance Calculation Error: ' + err.message);
+    else console.warn('Auto distance calculation skipped:', err.message);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Update Onboarding & Calculate Distances'; }
   }
@@ -362,6 +403,7 @@ function onToggleDistanceWillDrive(idx, checked) {
   if (!wfDistances[idx]) return;
   wfDistances[idx].WillDrive = checked;
   autoCalculateWorkflowCosts(true);
+  renderTestCostingTab();
 }
 
 function onSelectDistanceAuditor(idx, role) {
@@ -380,6 +422,7 @@ function onSelectDistanceAuditor(idx, role) {
   if (role === 'Auditor3') document.getElementById('wfAuditor3').value = audId;
   renderWorkflowDistancesTable();
   autoCalculateWorkflowCosts(true);
+  renderTestCostingTab();
 }
 
 function onAuditorDropdownChange() {
@@ -397,6 +440,7 @@ function onAuditorDropdownChange() {
     renderWorkflowDistancesTable();
   }
   autoCalculateWorkflowCosts(true);
+  renderTestCostingTab();
 }
 
 function onAuditDaysChange() {
@@ -408,6 +452,7 @@ function onAuditDaysChange() {
   }
   _applyAuditDaysToSelectedAuditors(true);
   recalcWorkflowCostings(true);
+  renderTestCostingTab();
 }
 
 function _applyAuditDaysToSelectedAuditors(overwriteExisting = true) {
@@ -505,7 +550,7 @@ function autoCalculateWorkflowCosts(silent = false) {
 
     if (days > 0) {
       const needsHotel = oneWayKm >= _wfNum(wfRates.hotel_km_threshold || 100);
-      const nights = days > 1 ? (days - 1) : (needsHotel ? 1 : 0);
+      const nights = Math.max(days > 1 ? (Math.ceil(days) - 1) : 0, needsHotel ? 1 : 0);
       setVal(150, col, wfRates.hotel_rate);
       setVal(160, col, nights || null);
       setVal(180, col, wfRates.dinner_rate);
@@ -586,6 +631,352 @@ function recalcWorkflowCostings(rerender = true) {
 
 function round2(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+function _fmtMinutes(mins) {
+  if (mins === null || mins === undefined || Number.isNaN(Number(mins))) return '';
+  const m = Math.round(Number(mins));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return h > 0 ? `${h}h ${r}m` : `${r}m`;
+}
+
+function _computeProjectedAuditorCost(distRow, days, rates, asLead, flightThresholdKm) {
+  const hasDist = distRow.Distance !== null && distRow.Distance !== undefined;
+  const oneWayKm = hasDist ? _wfNum(distRow.Distance) : 0;
+  const flightLikely = !hasDist || oneWayKm > flightThresholdKm;
+  // Default WillDrive from existing row if set, otherwise true when <= flight threshold
+  const willDrive = (distRow.WillDrive !== undefined && distRow.WillDrive !== null)
+    ? Boolean(distRow.WillDrive)
+    : (!flightLikely && oneWayKm > 0);
+
+  const auditFee = round2(days * rates.manday_rate);
+  const reportFee = asLead ? round2(rates.report_fee) : 0;
+  const baseFee = round2(auditFee + reportFee);
+
+  const avgSpeed = rates.avg_speed || 64;
+  const oneWayDriveMins = hasDist && oneWayKm > 0 ? Math.round((oneWayKm / avgSpeed) * 60) : null;
+  const returnKm = willDrive ? oneWayKm * 2 : 0;
+  const roadTravel = round2(returnKm * rates.per_km_rate);
+
+  const estHrs = returnKm > 0 ? round2(returnKm / avgSpeed) : 0;
+  const billableHrs = estHrs > 0 ? round2(Math.max(0, estHrs - 2)) : 0;
+  const travelTime = round2(billableHrs * rates.manday_hour_rate);
+
+  const hotelThreshold = _wfNum(rates.hotel_km_threshold || 100);
+  const needsHotel = !hasDist || oneWayKm >= hotelThreshold;
+  const nights = Math.max(days > 1 ? (Math.ceil(days) - 1) : 0, needsHotel ? 1 : 0);
+  const hotelCost = round2(nights * rates.hotel_rate);
+  const dinnerCost = round2(nights * rates.dinner_rate);
+  const lunchCost = round2(days * rates.lunch_rate);
+  const hotelMeals = round2(hotelCost + dinnerCost + lunchCost);
+
+  const estFlight = round2(_wfNum(wfTestFlightCosts[distRow.AuditorID]));
+  const total = round2(baseFee + roadTravel + travelTime + hotelMeals + estFlight);
+  return {
+    oneWayKm,
+    hasDist,
+    flightLikely,
+    willDrive,
+    needsHotel,
+    nights,
+    oneWayDriveMins,
+    estHrs,
+    billableHrs,
+    baseFee,
+    auditFee,
+    reportFee,
+    roadTravel,
+    travelTime,
+    hotelMeals,
+    estFlight,
+    total
+  };
+}
+
+function sortTestCostingBy(col) {
+  if (wfTestSort.col === col) {
+    wfTestSort.dir = (wfTestSort.dir === 'asc') ? 'desc' : 'asc';
+  } else {
+    wfTestSort.col = col;
+    wfTestSort.dir = 'asc';
+  }
+  renderTestCostingTab();
+}
+
+function _seedTestFlightCostsFromCostings() {
+  const flightRow = _findCostRow(240);
+  if (!flightRow) return;
+  [
+    { elId: 'wfAuditor1', col: 'Aud1' },
+    { elId: 'wfAuditor2', col: 'Aud2' },
+    { elId: 'wfAuditor3', col: 'Aud3' }
+  ].forEach(({ elId, col }) => {
+    const aid = document.getElementById(elId)?.value;
+    if (aid && wfTestFlightCosts[aid] === undefined && _wfNum(flightRow[col]) > 0) {
+      wfTestFlightCosts[aid] = round2(_wfNum(flightRow[col]));
+    }
+  });
+}
+
+function _getTestCostComputedList() {
+  const days = _wfNum(document.getElementById('wfAuditDays')?.value);
+  const onlyOnboarded = document.getElementById('wfTestOnlyOnboarded')?.checked ?? true;
+  const flightThresholdKm = _wfNum(document.getElementById('wfTestFlightKm')?.value) || 400;
+  const rows = wfDistances
+    .map(d => {
+      const canSel = Boolean(d.CanSelect) || (d.InternalOnboarded === 'YES' && d.CB_Prog_Onboarded === 'YES');
+      return { d, canSel };
+    })
+    .filter(x => !onlyOnboarded || x.canSel);
+
+  return rows.map(({ d, canSel }) => {
+    const isCoAud = d.SelectAud === 'Auditor2' || d.SelectAud === 'Auditor3';
+    const calc = _computeProjectedAuditorCost(d, days, wfRates, !isCoAud, flightThresholdKm);
+    return { d, canSel, calc };
+  });
+}
+
+function _updateTestCostSummary(computed, minTotal) {
+  const summary = document.getElementById('wfTestCostSelectionSummary');
+  if (!summary || !computed.length) return;
+  const cheapestItem = computed.reduce((best, cur) => (cur.calc.total < best.calc.total ? cur : best), computed[0]);
+  const selectedRows = computed.filter(x => x.d.SelectAud === 'Auditor1' || x.d.SelectAud === 'Auditor2' || x.d.SelectAud === 'Auditor3');
+  const teamTotal = round2(selectedRows.reduce((acc, x) => acc + x.calc.total, 0));
+  if (selectedRows.length) {
+    const chips = selectedRows
+      .sort((a, b) => a.d.SelectAud.localeCompare(b.d.SelectAud))
+      .map(x => `<div><span>${_wfEsc(x.d.SelectAud)} (${_wfEsc(x.d.Auditor)}):</span> <strong>${_wfEur(x.calc.total)}</strong></div>`)
+      .join('');
+    summary.innerHTML = `${chips}<div class="wf-grand-total"><span>Selected Team Total:</span> <strong>${_wfEur(teamTotal)}</strong></div>`;
+  } else {
+    summary.innerHTML = `<div><span>Lowest Single-Auditor Cost:</span> <strong>${_wfEsc(cheapestItem.d.Auditor)} (${_wfEur(minTotal)})</strong></div><div style="color:#64748b;font-size:0.82rem;">Select Auditor 1 / 2 / 3 below, then click Apply.</div>`;
+  }
+}
+
+function renderTestCostingTab() {
+  const banner = document.getElementById('wfTestCostBanner');
+  const summary = document.getElementById('wfTestCostSelectionSummary');
+  const tbody = document.getElementById('wfTestCostingTableBody');
+  if (!tbody) return;
+
+  _seedTestFlightCostsFromCostings();
+
+  const days = _wfNum(document.getElementById('wfAuditDays')?.value);
+  if (banner && wfRates) {
+    banner.innerHTML = `
+      <div class="wf-rate-chip"><span>Audit Days</span><strong>${days > 0 ? days.toFixed(2) : 'Not set'}</strong></div>
+      <div class="wf-rate-chip"><span>Manday Rate</span><strong>${_wfEur(wfRates.manday_rate)}</strong></div>
+      <div class="wf-rate-chip"><span>Report Fee (Lead)</span><strong>${_wfEur(wfRates.report_fee)}</strong></div>
+      <div class="wf-rate-chip"><span>Per KM</span><strong>${_wfEur(wfRates.per_km_rate)}</strong></div>
+      <div class="wf-rate-chip"><span>Speed Rule</span><strong>${wfRates.avg_speed || 64} km/h (-2h)</strong></div>
+      <div class="wf-rate-chip"><span>Hotel Rule</span><strong>&ge; ${wfRates.hotel_km_threshold || 100} km (${_wfEur(wfRates.hotel_rate)} + ${_wfEur(wfRates.dinner_rate)})</strong></div>
+    `;
+  }
+
+  document.querySelectorAll('#wfTestCostingTable .wf-sort-ind').forEach(el => {
+    const k = el.getAttribute('data-sort');
+    if (k === wfTestSort.col || (k === 'vsCheapest' && wfTestSort.col === 'total')) {
+      el.textContent = wfTestSort.dir === 'asc' ? '▲' : '▼';
+    } else {
+      el.textContent = '';
+    }
+  });
+
+  if (!wfRates) {
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#64748b;padding:1.25rem;">Loading rates...</td></tr>';
+    return;
+  }
+  if (!(days > 0)) {
+    if (summary) summary.innerHTML = '<span style="color:#dc2626;font-weight:600;">Enter Audit Days above to simulate costs across all auditors.</span>';
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#dc2626;padding:1.25rem;">Please enter <strong>Audit Days</strong> in the header to calculate projected costs.</td></tr>';
+    return;
+  }
+  if (!wfDistances.length) {
+    if (summary) summary.innerHTML = '<span style="color:#64748b;">Select a Site to automatically calculate distances, or click Refresh Distances.</span>';
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#64748b;padding:1.25rem;">No auditor distances loaded yet. Select a <strong>Site to be Audited</strong> to calculate distances automatically.</td></tr>';
+    return;
+  }
+
+  const computed = _getTestCostComputedList();
+  if (!computed.length) {
+    if (summary) summary.innerHTML = '<span style="color:#b45309;">No fully onboarded auditors found for this CB &amp; Program. Uncheck "Only onboarded auditors" to inspect all active auditors.</span>';
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#64748b;padding:1.25rem;">No matching auditors. Try unchecking "Only onboarded auditors".</td></tr>';
+    return;
+  }
+
+  const minTotal = Math.min(...computed.map(x => x.calc.total));
+
+  const dirMul = wfTestSort.dir === 'asc' ? 1 : -1;
+  computed.sort((a, b) => {
+    const col = wfTestSort.col;
+    if (col === 'auditor') return a.d.Auditor.localeCompare(b.d.Auditor) * dirMul;
+    if (col === 'distance') {
+      const da = a.calc.hasDist ? a.calc.oneWayKm : 999999;
+      const db = b.calc.hasDist ? b.calc.oneWayKm : 999999;
+      return (da - db) * dirMul;
+    }
+    if (col === 'duration') {
+      const ta = a.calc.oneWayDriveMins !== null ? a.calc.oneWayDriveMins : 999999;
+      const tb = b.calc.oneWayDriveMins !== null ? b.calc.oneWayDriveMins : 999999;
+      return (ta - tb) * dirMul;
+    }
+    const va = a.calc[col] ?? a.calc.total;
+    const vb = b.calc[col] ?? b.calc.total;
+    return (va - vb) * dirMul;
+  });
+
+  _updateTestCostSummary(computed, minTotal);
+
+  tbody.innerHTML = computed.map(({ d, canSel, calc }) => {
+    const delta = round2(calc.total - minTotal);
+    const isCheapest = delta === 0;
+    const isSelected = Boolean(d.SelectAud);
+    const driveDur = _fmtMinutes(calc.oneWayDriveMins);
+    const distCell = calc.hasDist ? `${calc.oneWayKm} km` : '<span style="color:#dc2626;">No route</span>';
+    const retHrs = calc.hasDist && calc.oneWayKm > 0 ? round2((calc.oneWayKm * 2) / (wfRates.avg_speed || 64)) : 0;
+    const durCell = driveDur
+      ? `<span title="1-way @ ${wfRates.avg_speed || 64} km/h (Return: ${retHrs} hrs)">${driveDur}</span>`
+      : '<span style="color:#94a3b8;">-</span>';
+
+    const leftBadges = [];
+    if (!canSel) leftBadges.push('<span class="status-badge inactive" style="font-size:0.68rem;">Not Onboarded</span>');
+    if (calc.nights > 0) leftBadges.push(`<span class="status-badge" style="font-size:0.68rem;background:#e0f2fe;color:#075985;">Hotel (${calc.nights}n)</span>`);
+
+    const flightFlagHtml = calc.flightLikely
+      ? '<span class="status-badge" style="font-size:0.7rem;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;">Flight Likely</span>'
+      : '<span style="color:#cbd5e1;">-</span>';
+
+    const flightVal = wfTestFlightCosts[d.AuditorID] !== undefined ? wfTestFlightCosts[d.AuditorID] : '';
+
+    const deltaHtml = isCheapest
+      ? '<span class="status-badge complete" style="font-size:0.72rem;">Cheapest</span>'
+      : `<span style="color:#b45309;font-weight:600;">+${_wfEur(delta)}</span>`;
+
+    return `
+      <tr data-aud-id="${d.AuditorID}" class="${isSelected ? 'wf-row-selected' : (canSel ? '' : 'wf-row-muted')}" style="${isSelected ? 'background:#f0fdf4;' : ''}">
+        <td>
+          <strong>${_wfEsc(d.Auditor)}</strong>
+          <div style="font-size:0.75rem;color:#64748b;">${_wfEsc([d.City, d.Country].filter(Boolean).join(', ') || '-')}</div>
+          ${leftBadges.length ? `<div style="display:flex;gap:0.25rem;flex-wrap:wrap;margin-top:2px;">${leftBadges.join('')}</div>` : ''}
+        </td>
+        <td style="text-align:right;font-weight:600;white-space:nowrap;">${distCell}</td>
+        <td style="text-align:right;color:#334155;white-space:nowrap;">${durCell}</td>
+        <td style="text-align:center;">
+          <input type="checkbox" ${calc.willDrive ? 'checked' : ''} onchange="onToggleTestCostWillDrive(${d.AuditorID}, this.checked)">
+        </td>
+        <td>
+          <select class="wf-input-sm" onchange="onSelectTestCostRole(${d.AuditorID}, this.value)">
+            <option value="">--</option>
+            <option value="Auditor1" ${d.SelectAud === 'Auditor1' ? 'selected' : ''}>Auditor 1 (Lead)</option>
+            <option value="Auditor2" ${d.SelectAud === 'Auditor2' ? 'selected' : ''}>Auditor 2</option>
+            <option value="Auditor3" ${d.SelectAud === 'Auditor3' ? 'selected' : ''}>Auditor 3</option>
+          </select>
+        </td>
+        <td style="text-align:center;white-space:nowrap;">${flightFlagHtml}</td>
+        <td style="text-align:right;">${_wfEur(calc.baseFee)}</td>
+        <td style="text-align:right;">${_wfEur(calc.roadTravel)}</td>
+        <td style="text-align:right;" title="${calc.billableHrs} billable hrs">${_wfEur(calc.travelTime)}</td>
+        <td style="text-align:right;">${_wfEur(calc.hotelMeals)}</td>
+        <td style="text-align:right;">
+          <input type="number" step="0.01" min="0" placeholder="0.00"
+                 class="wf-no-spin"
+                 value="${flightVal !== '' ? flightVal : ''}"
+                 style="width:76px;text-align:right;padding:0.2rem 0.35rem;border:1px solid #cbd5e1;border-radius:4px;font-size:0.8rem;"
+                 oninput="onInputTestFlightCost(${d.AuditorID}, this.value)"
+                 onchange="renderTestCostingTab()">
+        </td>
+        <td class="wf-test-total-cell" style="text-align:right;font-weight:700;color:#001429;">${_wfEur(calc.total)}</td>
+        <td class="wf-test-delta-cell" style="text-align:right;">${deltaHtml}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function onInputTestFlightCost(auditorId, rawVal) {
+  if (rawVal === '' || rawVal === null) {
+    delete wfTestFlightCosts[auditorId];
+  } else {
+    const parsed = parseFloat(rawVal);
+    wfTestFlightCosts[auditorId] = Number.isNaN(parsed) ? 0 : Math.max(0, round2(parsed));
+  }
+  const computed = _getTestCostComputedList();
+  if (!computed.length) return;
+  const minTotal = Math.min(...computed.map(x => x.calc.total));
+  _updateTestCostSummary(computed, minTotal);
+  computed.forEach(({ d, calc }) => {
+    const tr = document.querySelector(`#wfTestCostingTableBody tr[data-aud-id="${d.AuditorID}"]`);
+    if (!tr) return;
+    const totalCell = tr.querySelector('.wf-test-total-cell');
+    const deltaCell = tr.querySelector('.wf-test-delta-cell');
+    if (totalCell) totalCell.textContent = _wfEur(calc.total);
+    if (deltaCell) {
+      const delta = round2(calc.total - minTotal);
+      deltaCell.innerHTML = (delta === 0)
+        ? '<span class="status-badge complete" style="font-size:0.72rem;">Cheapest</span>'
+        : `<span style="color:#b45309;font-weight:600;">+${_wfEur(delta)}</span>`;
+    }
+  });
+}
+
+function onToggleTestCostWillDrive(auditorId, checked) {
+  const row = wfDistances.find(d => Number(d.AuditorID) === Number(auditorId));
+  if (!row) return;
+  row.WillDrive = checked;
+  renderWorkflowDistancesTable();
+  renderTestCostingTab();
+}
+
+function onSelectTestCostRole(auditorId, role) {
+  const idx = wfDistances.findIndex(d => Number(d.AuditorID) === Number(auditorId));
+  if (idx === -1) return;
+  const prevRole = wfDistances[idx].SelectAud;
+  if (role) {
+    wfDistances.forEach((d, i) => { if (i !== idx && d.SelectAud === role) d.SelectAud = ''; });
+  }
+  wfDistances[idx].SelectAud = role;
+  if (prevRole && prevRole !== role) {
+    const prevEl = document.getElementById('wf' + prevRole);
+    if (prevEl && String(prevEl.value) === String(auditorId)) prevEl.value = '';
+  }
+  if (role === 'Auditor1') document.getElementById('wfAuditor1').value = auditorId;
+  if (role === 'Auditor2') document.getElementById('wfAuditor2').value = auditorId;
+  if (role === 'Auditor3') document.getElementById('wfAuditor3').value = auditorId;
+  renderWorkflowDistancesTable();
+  renderTestCostingTab();
+}
+
+function applyTestCostingSelection(andGenerateQuote = false) {
+  const a1 = document.getElementById('wfAuditor1')?.value;
+  const a2 = document.getElementById('wfAuditor2')?.value;
+  const a3 = document.getElementById('wfAuditor3')?.value;
+  if (!a1 && !a2 && !a3) {
+    alert('Please select at least one Auditor (e.g. Auditor 1) in the comparison table first.');
+    return;
+  }
+  autoCalculateWorkflowCosts(false);
+
+  // Apply any captured Estimated Flight Costs to OrdBy 240 (Flights - Total Charge)
+  const flightRow = _findCostRow(240);
+  if (flightRow) {
+    [
+      { aid: a1, col: 'Aud1' },
+      { aid: a2, col: 'Aud2' },
+      { aid: a3, col: 'Aud3' }
+    ].forEach(({ aid, col }) => {
+      if (aid && wfTestFlightCosts[aid] !== undefined) {
+        flightRow[col] = wfTestFlightCosts[aid] > 0 ? round2(wfTestFlightCosts[aid]) : null;
+      }
+    });
+    recalcWorkflowCostings(true);
+  }
+
+  if (andGenerateQuote) {
+    pullQuoteFromCostings();
+    switchWorkflowTab('wfTabQuote');
+  } else {
+    switchWorkflowTab('wfTabCostings');
+  }
 }
 
 let wfCostRibbonOpen = { Aud1: true, Aud2: false, Aud3: false, Other: true };

@@ -3746,19 +3746,19 @@
         <div class="wf-core-grid">
           <div class="wf-field">
             <label>Certification Body</label>
-            <select id="wfCB" onchange="refreshWorkflowRates(true)"></select>
+            <select id="wfCB" onchange="onWorkflowRatesContextChange(true)"></select>
           </div>
           <div class="wf-field">
             <label>Auditee</label>
-            <select id="wfAuditee" onchange="filterWorkflowSitesByAuditee(); refreshWorkflowRates(true);"></select>
+            <select id="wfAuditee" onchange="onWorkflowAuditeeChange()"></select>
           </div>
           <div class="wf-field" style="grid-column: span 2;">
             <label>Site to be Audited</label>
-            <select id="wfSite" onchange="refreshWorkflowRates(true)"></select>
+            <select id="wfSite" onchange="onWorkflowSiteChange()"></select>
           </div>
           <div class="wf-field">
             <label>Audit Program</label>
-            <select id="wfProgram" onchange="refreshWorkflowRates(true)"></select>
+            <select id="wfProgram" onchange="onWorkflowRatesContextChange(true)"></select>
           </div>
           <div class="wf-field">
             <label>Audit Type</label>
@@ -3816,6 +3816,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.45rem;">
           <div class="wf-tabs-bar" style="margin-bottom:0;border-bottom:none;">
             <button type="button" class="wf-tab-btn active" data-wf-tab="wfTabDetails" onclick="switchWorkflowTab('wfTabDetails')">Audit Details &amp; Distances</button>
+            <button type="button" class="wf-tab-btn" data-wf-tab="wfTabTestCosting" onclick="switchWorkflowTab('wfTabTestCosting')">Test Costing (Compare)</button>
             <button type="button" class="wf-tab-btn" data-wf-tab="wfTabCostings" onclick="switchWorkflowTab('wfTabCostings')">Smart Costings</button>
             <button type="button" class="wf-tab-btn" data-wf-tab="wfTabQuote" onclick="switchWorkflowTab('wfTabQuote')">Quote Builder</button>
             <button type="button" class="wf-tab-btn" data-wf-tab="wfTabMore" onclick="switchWorkflowTab('wfTabMore')">Follow-Ups, Links &amp; Notes</button>
@@ -3888,6 +3889,56 @@
                 </tr>
               </thead>
               <tbody id="wfDistancesTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 1B: Test Costing (Intelligent Auditor Cost Comparison) -->
+        <div id="wfTabTestCosting" class="wf-tab-pane" style="display:none;">
+          <div id="wfTestCostBanner" class="wf-rates-banner"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.65rem;margin-bottom:0.75rem;">
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;font-size:0.84rem;">
+              <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-weight:600;color:#0f172a;margin:0;">
+                <input type="checkbox" id="wfTestOnlyOnboarded" checked onchange="renderTestCostingTab()">
+                Only onboarded auditors (Internal + CB &amp; Program)
+              </label>
+              <label style="display:flex;align-items:center;gap:0.4rem;color:#475569;margin:0;">
+                Flight flag threshold (km):
+                <input type="number" id="wfTestFlightKm" value="400" min="50" step="50" style="width:72px;padding:0.2rem 0.4rem;border:1px solid #cbd5e1;border-radius:4px;" onchange="renderTestCostingTab()">
+              </label>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+              <button type="button" class="btn-secondary" onclick="calculateWorkflowDistances(false)">Refresh Distances</button>
+              <button type="button" class="btn-primary" style="background:#001429;border-color:#001429;color:#ffffff;" onclick="applyTestCostingSelection(false)">Apply Selected to Costings</button>
+              <button type="button" class="btn-primary" style="background:#10b981;border-color:#10b981;color:#ffffff;" onclick="applyTestCostingSelection(true)">Apply &amp; Generate Quote</button>
+            </div>
+          </div>
+          <style>
+            .wf-no-spin::-webkit-outer-spin-button,
+            .wf-no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+            .wf-no-spin { -moz-appearance: textfield; }
+          </style>
+          <div id="wfTestCostSelectionSummary" class="wf-totals-bar" style="margin-bottom:0.75rem;padding:0.45rem 0.85rem;"></div>
+          <div class="data-table-container" style="max-height:380px;overflow:auto;">
+            <table class="data-table compact-audits-table" id="wfTestCostingTable">
+              <thead>
+                <tr>
+                  <th style="cursor:pointer;user-select:none;" onclick="sortTestCostingBy('auditor')">Auditor <span class="wf-sort-ind" data-sort="auditor"></span></th>
+                  <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('distance')">Distance <span class="wf-sort-ind" data-sort="distance"></span></th>
+                  <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('duration')">Drive Time <span class="wf-sort-ind" data-sort="duration"></span></th>
+                  <th style="text-align:center;">Will Drive</th>
+                  <th>Select Role</th>
+                  <th style="text-align:center;">Travel Flag</th>
+                  <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('baseFee')">Audit + Report <span class="wf-sort-ind" data-sort="baseFee"></span></th>
+                  <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('roadTravel')">Road Travel <span class="wf-sort-ind" data-sort="roadTravel"></span></th>
+                  <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('travelTime')">Travel Time <span class="wf-sort-ind" data-sort="travelTime"></span></th>
+                  <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('hotelMeals')">Hotel &amp; Meals <span class="wf-sort-ind" data-sort="hotelMeals"></span></th>
+                  <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('estFlight')">Est. Flight <span class="wf-sort-ind" data-sort="estFlight"></span></th>
+                  <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('total')">Total Cost <span class="wf-sort-ind" data-sort="total"></span></th>
+                  <th style="text-align:right;cursor:pointer;user-select:none;" onclick="sortTestCostingBy('total')">vs Cheapest <span class="wf-sort-ind" data-sort="vsCheapest"></span></th>
+                </tr>
+              </thead>
+              <tbody id="wfTestCostingTableBody"></tbody>
             </table>
           </div>
         </div>

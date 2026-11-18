@@ -296,6 +296,7 @@ async def calculate_auditor_distances(payload: DistanceCalcRequest, request: Req
             origins_meta.append((a["AuditorID"], ", ".join(addr_parts)))
 
     distance_results: Dict[int, Optional[float]] = {}
+    duration_results: Dict[int, Optional[int]] = {}
     batch_size = 25
     for i in range(0, len(origins_meta), batch_size):
         batch = origins_meta[i : i + batch_size]
@@ -323,12 +324,16 @@ async def calculate_auditor_distances(payload: DistanceCalcRequest, request: Req
         rows = gm_data.get("rows") or []
         for idx, (aud_id, _) in enumerate(batch):
             dist_km = None
+            dur_min = None
             if idx < len(rows):
                 elements = rows[idx].get("elements") or []
                 if elements and elements[0].get("status") == "OK":
                     meters = elements[0]["distance"]["value"]
                     dist_km = round(meters / 1000.0)
+                    if elements[0].get("duration") and elements[0]["duration"].get("value") is not None:
+                        dur_min = round(elements[0]["duration"]["value"] / 60.0)
             distance_results[aud_id] = dist_km
+            duration_results[aud_id] = dur_min
 
     output_rows = []
     for a in auditors:
@@ -354,8 +359,9 @@ async def calculate_auditor_distances(payload: DistanceCalcRequest, request: Req
                 "CB_Prog_Onboarded": "YES" if cb_prog_yes else "",
                 "CanSelect": internal_yes and cb_prog_yes,
                 "Distance": dist_km,
+                "DurationMinutes": duration_results.get(aid),
                 "SelectAud": prev.get("SelectAud") or "",
-                "WillDrive": bool(prev.get("WillDrive")) if prev else False,
+                "WillDrive": bool(prev.get("WillDrive")) if prev else (dist_km is not None and 0 < dist_km <= 400),
             }
         )
 
